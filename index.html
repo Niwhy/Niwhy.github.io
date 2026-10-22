@@ -50,6 +50,9 @@
 
   #divider { flex:0 0 5px; width:5px; background:var(--divider); cursor:col-resize; }
 
+  /* на десктопе ручка панели не нужна — панель и так сбоку */
+  #panelBar { display:none; }
+
   #panelWrap { flex:0 0 400px; width:400px; min-width:320px; max-width:620px;
     overflow-y:auto; overflow-x:hidden; background:var(--panel); -webkit-overflow-scrolling:touch; }
 
@@ -137,6 +140,25 @@
       border-top:1px solid var(--group-border); }
     #badge { font-size:10px; padding:5px 10px; white-space:normal; }
     input[type=number] { width:92px; }
+
+    /* ── ручка-«шторка»: сворачивает нижнее меню целиком ── */
+    #panelBar {
+      display:flex; align-items:center; justify-content:center; gap:8px;
+      position:sticky; top:0; z-index:5; height:36px;
+      background:var(--panel); border-bottom:1px solid var(--group-border);
+      color:var(--hdr); font-size:12px; font-weight:700; letter-spacing:.2px;
+      cursor:pointer; user-select:none; -webkit-user-select:none; touch-action:none;
+    }
+    #panelBar:active { color:var(--hdr-hover); }
+    #panelBar .grip { position:absolute; top:5px; left:50%; transform:translateX(-50%);
+      width:38px; height:4px; border-radius:2px; background:var(--group-border); }
+    #panelBar .chev { font-size:14px; line-height:1; transition:transform .18s ease; }
+
+    /* свёрнутое состояние: от панели остаётся только ручка */
+    body.is-collapsed #panel { display:none; }
+    body.is-collapsed #panelWrap { flex:0 0 auto; }
+    body.is-collapsed #stage { flex:1 1 auto; height:auto; min-height:0; }
+    body.is-collapsed #panelBar .chev { transform:rotate(180deg); }
   }
 </style>
 </head>
@@ -148,7 +170,14 @@
     <div id="badge">МАКЕТ для QR: та же математика и оформление, что в Python-программе v3.2.</div>
   </div>
   <div id="divider"></div>
-  <div id="panelWrap"><div id="panel">
+  <div id="panelWrap">
+    <div id="panelBar" role="button" tabindex="0" aria-controls="panel" aria-expanded="true"
+         title="Свернуть или показать панель настроек">
+      <span class="grip"></span>
+      <span id="panelBarLabel">Свернуть панель</span>
+      <span class="chev" aria-hidden="true">▾</span>
+    </div>
+    <div id="panel">
 
     <div id="title">Интерактивная модель координат v3.2</div>
 
@@ -498,7 +527,8 @@ var S = {
   show_daily_parallel: false, show_declination_circle: false,
   show_vertical_circle: false, show_almucantar: false,
   show_body: true, show_labels: true, show_cartesian_axes: true,
-  legend_scroll: 0
+  legend_scroll: 0,
+  legend_collapsed: false,
 };
 
 var AUTO_ROTATE_SPEED = 10.6;
@@ -531,6 +561,9 @@ var M = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
 var depthRow = [0, 0, 1];
 var runs = [], labels = [];
 var legendRect = null;
+/* сенсорный экран: подсказки и жесты отличаются от мыши */
+var TOUCH_UI = (window.matchMedia && window.matchMedia("(pointer: coarse)").matches)
+               || (navigator.maxTouchPoints || 0) > 0;
 var needsRender = true;
 var SEG = 160;
 
@@ -937,32 +970,61 @@ function legendItems() {
   return items;
 }
 
+var legendMeta = null;   /* {headerH, lineH, visible, total, maxScroll} — для жестов */
+
 function drawLegend() {
   var items = legendItems();
-  if (!items.length) { legendRect = null; return; }
+  if (!items.length) { legendRect = null; legendMeta = null; return; }
   var light = S.theme === "light";
   var compact = cssW < 520 || cssH < 420;
   var margin = compact ? 10 : 16;
   var lineH = compact ? 16 : 20;
-  /* сколько строк реально влезает в половину кадра */
-  var fit = Math.max(2, Math.floor(((cssH * 0.55) - (compact ? 40 : 48)) / lineH));
-  var maxVisible = Math.min(9, fit);
+  var headH = compact ? 40 : 48;
+  /* свёрнутая легенда — только заголовок-полоска */
+  var stripH = compact ? 28 : 32;
   var width = Math.min(compact ? 280 : 375, Math.max(180, cssW - 2 * margin));
   var total = items.length;
+
+  function frame(x, y, w, h) {
+    roundRect(ctx, x, y, w, h, compact ? 8 : 10);
+    ctx.fillStyle = light ? "rgba(255,255,255,0.84)" : "rgba(5,8,24,0.80)";
+    ctx.fill();
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(80,115,180,0.71)";
+    ctx.stroke();
+  }
+
+  if (S.legend_collapsed) {
+    var height0 = stripH;
+    var x0 = margin, y0 = cssH - height0 - margin;
+    legendRect = { x: x0, y: y0, w: width, h: height0 };
+    legendMeta = { headerH: height0, lineH: 0, visible: 0, total: total, maxScroll: 0 };
+    frame(x0, y0, width, height0);
+    ctx.textAlign = "left";
+    ctx.textBaseline = "alphabetic";
+    ctx.font = "bold " + (compact ? 11 : 13) + "px 'Segoe UI', Roboto, Arial, sans-serif";
+    ctx.fillStyle = light ? "#142038" : "#EBF2FF";
+    ctx.fillText("Легенда (" + total + ")", x0 + (compact ? 9 : 14), y0 + (compact ? 18 : 21));
+    ctx.textAlign = "right";
+    ctx.font = (compact ? 11 : 13) + "px 'Segoe UI', Roboto, Arial, sans-serif";
+    ctx.fillStyle = light ? "#2C4E86" : "#8FC0FF";
+    ctx.fillText("\u25B8 показать", x0 + width - (compact ? 10 : 14), y0 + (compact ? 18 : 21));
+    ctx.textAlign = "left";
+    return;
+  }
+
+  /* сколько строк реально влезает в половину кадра */
+  var fit = Math.max(2, Math.floor(((cssH * 0.55) - headH) / lineH));
+  var maxVisible = Math.min(9, fit);
   var visible = Math.min(maxVisible, total);
   var maxScroll = Math.max(0, total - visible);
   S.legend_scroll = Math.round(clamp(S.legend_scroll, 0, maxScroll));
-  var headH = compact ? 40 : 48;
   var height = headH + visible * lineH;
   var x = margin, y = cssH - height - margin;
   legendRect = { x: x, y: y, w: width, h: height };
+  legendMeta = { headerH: headH, lineH: lineH, visible: visible, total: total, maxScroll: maxScroll };
 
-  roundRect(ctx, x, y, width, height, compact ? 8 : 10);
-  ctx.fillStyle = light ? "rgba(255,255,255,0.84)" : "rgba(5,8,24,0.80)";
-  ctx.fill();
-  ctx.lineWidth = 1;
-  ctx.strokeStyle = "rgba(80,115,180,0.71)";
-  ctx.stroke();
+  frame(x, y, width, height);
 
   ctx.textAlign = "left";
   ctx.textBaseline = "alphabetic";
@@ -971,6 +1033,11 @@ function drawLegend() {
   var title = "Легенда элементов сцены";
   if (total > visible) title += "  (" + (S.legend_scroll + 1) + "-" + (S.legend_scroll + visible) + " из " + total + ")";
   ctx.fillText(title, x + (compact ? 9 : 14), y + (compact ? 17 : 22));
+  ctx.textAlign = "right";
+  ctx.font = (compact ? 11 : 13) + "px 'Segoe UI', Roboto, Arial, sans-serif";
+  ctx.fillStyle = light ? "#2C4E86" : "#8FC0FF";
+  ctx.fillText("\u25BE", x + width - (compact ? 9 : 13), y + (compact ? 17 : 22));
+  ctx.textAlign = "left";
 
   ctx.font = (compact ? 10 : 12) + "px 'Segoe UI', Roboto, Arial, sans-serif";
   var lineX0 = x + (compact ? 12 : 15);
@@ -999,7 +1066,9 @@ function drawLegend() {
   if (total > visible) {
     ctx.font = (compact ? 9 : 10) + "px 'Segoe UI', Roboto, Arial, sans-serif";
     ctx.fillStyle = light ? "#4B5A78" : "#AABEE1";
-    ctx.fillText("Прокрутка колесиком мыши по легенде", x + (compact ? 9 : 14), y + height - (compact ? 4 : 6));
+    ctx.fillText(TOUCH_UI ? "Смахивайте по легенде, чтобы листать"
+                          : "Прокрутка колесиком мыши по легенде",
+                 x + (compact ? 9 : 14), y + height - (compact ? 4 : 6));
   }
 }
 
@@ -1440,6 +1509,16 @@ var lastX = 0, lastY = 0;
 var lastMoveTime = 0;
 var pointers = new Map();
 var pinchStartDist = 0, pinchStartZoom = -12;
+var legendGesture = null;      /* касание/смахивание по легенде */
+
+function legendHit(e) {
+  if (!legendRect) return null;
+  var r = canvas.getBoundingClientRect();
+  var mx = e.clientX - r.left, my = e.clientY - r.top;
+  if (mx < legendRect.x || mx > legendRect.x + legendRect.w) return null;
+  if (my < legendRect.y || my > legendRect.y + legendRect.h) return null;
+  return legendRect;
+}
 
 function applyRotation(dh, dv) {
   if (S.rotation_mode === "Z") S.rot_z += dh;
@@ -1458,6 +1537,17 @@ canvas.addEventListener("pointerdown", function (e) {
   try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   if (pointers.size === 1) {
+    var lr = legendHit(e);
+    if (lr) {
+      /* по легенде: тап по заголовку сворачивает/разворачивает,
+         смахивание листает строки — сферу при этом не крутим */
+      legendGesture = { startX: e.clientX, startY: e.clientY,
+                        startScroll: S.legend_scroll, moved: false,
+                        header: (e.clientY - (canvas.getBoundingClientRect().top + lr.y))
+                                <= ((legendMeta && legendMeta.headerH) || 40) };
+      drag = false; velH = 0; velV = 0;
+      return;
+    }
     drag = true;
     velH = 0; velV = 0;
     lastX = e.clientX; lastY = e.clientY;
@@ -1474,11 +1564,25 @@ canvas.addEventListener("pointermove", function (e) {
   if (!pointers.has(e.pointerId)) return;
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
+  if (legendGesture) {
+    var gdx = e.clientX - legendGesture.startX;
+    var gdy = e.clientY - legendGesture.startY;
+    if (Math.abs(gdx) > 5 || Math.abs(gdy) > 5) legendGesture.moved = true;
+    if (legendMeta && legendMeta.lineH > 0 && legendMeta.maxScroll > 0) {
+      var stepPx = legendMeta.lineH * 1.15;
+      var ns = Math.round(clamp(legendGesture.startScroll - gdy / stepPx, 0, legendMeta.maxScroll));
+      if (ns !== S.legend_scroll) { S.legend_scroll = ns; needsRender = true; }
+    }
+    return;
+  }
+
   if (pointers.size >= 2) {
     var pts = Array.from(pointers.values());
     var d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
     if (pinchStartDist > 4) {
-      S.zoom_target = clamp(pinchStartZoom + (pinchStartDist - d) * 0.05, -35, -4);
+      /* пальцы врозь — приблизить, пальцы вместе — отдалить
+         (zoom хранится отрицательным: чем ближе к нулю, тем крупнее сцена) */
+      S.zoom_target = clamp(pinchStartZoom + (d - pinchStartDist) * 0.05, -35, -4);
       needsRender = true;
     }
     return;
@@ -1504,6 +1608,16 @@ canvas.addEventListener("pointermove", function (e) {
 
 function endPointer(e) {
   pointers.delete(e.pointerId);
+  if (legendGesture) {
+    if (!legendGesture.moved && legendGesture.header) {
+      S.legend_collapsed = !S.legend_collapsed;
+      needsRender = true;
+      setStatus(S.legend_collapsed
+        ? "Легенда свернута — сцена свободна. Нажмите на полоску «показать», чтобы вернуть список."
+        : "Легенда развернута. Смахивайте по ней пальцем, чтобы листать элементы.");
+    }
+    legendGesture = null;
+  }
   if (pointers.size === 1) {
     var pts = Array.from(pointers.values());
     lastX = pts[0].x; lastY = pts[0].y;
@@ -1627,7 +1741,7 @@ var HELP = [
   "Программа предназначена для изучения геодезической астрономии. Главная задача — показать не звездное небо как в планетариях, а геометрию координатных систем: горизонт, экватор, ось мира, меридиан, эклиптику, суточные параллели и положение светила.",
   "",
   "2. РАБОЧАЯ ОБЛАСТЬ",
-  "В центре находится 3D-сцена. Левой кнопкой мыши (или пальцем) можно вращать сцену, колесиком — менять масштаб, двумя пальцами — масштаб на телефоне. Ось Z в начальном виде направлена вверх и соответствует направлению на северный полюс Pn.",
+  "В центре находится 3D-сцена. Левой кнопкой мыши (или пальцем) можно вращать сцену, колесиком — менять масштаб. На телефоне масштаб меняется двумя пальцами: развести пальцы — приблизить, свести — отдалить. Ось Z в начальном виде направлена вверх и соответствует направлению на северный полюс Pn.",
   "",
   "3. ГЕОДЕЗИЧЕСКАЯ ОРИЕНТАЦИЯ ОСЕЙ",
   "X — направление на экваторе к начальному, или Гринвичскому, меридиану.",
@@ -1700,7 +1814,7 @@ var HELP = [
   "Оно объясняет годовое изменение склонения Солнца и смену сезонов.",
   "",
   "14. ЛЕГЕНДА",
-  "Легенда находится в левом нижнем углу. Она динамическая: в ней показываются только те объекты, которые включены на сцене. Если элементов много, наведите курсор на легенду и прокрутите колесиком мыши.",
+  "Легенда находится в левом нижнем углу. Она динамическая: в ней показываются только те объекты, которые включены на сцене. Если элементов много, наведите курсор на легенду и прокрутите колесиком мыши, а на телефоне — смахните по ней пальцем. Нажатие на заголовок сворачивает легенду до одной полоски и освобождает сцену.",
   "",
   "15. НИЖНЯЯ СТРОКА СПРАВКИ",
   "В нижней строке отображается краткое пояснение к элементу, на который наведен курсор или который был изменен. Это аналог профессиональной строки состояния в инженерных и геодезических программах.",
@@ -1726,6 +1840,85 @@ document.getElementById("helpBtn").addEventListener("click", function () {
   modalText.textContent = HELP;
   modal.classList.add("open");
 });
+
+/* ═══════════════════════════════════════════════════════════
+    ЛЕГЕНДА НА ТЕЛЕФОНЕ: по умолчанию свёрнута, выбор запоминается
+   ═══════════════════════════════════════════════════════════ */
+
+(function legendStartState() {
+  var saved = null;
+  try { saved = localStorage.getItem("astroLegendCollapsed"); } catch (err) {}
+  if (saved === "1") S.legend_collapsed = true;
+  else if (saved === "0") S.legend_collapsed = false;
+  else S.legend_collapsed = window.innerWidth <= 820;   /* на телефоне сцена важнее списка */
+  needsRender = true;
+
+  /* запоминаем переключения пользователя */
+  canvas.addEventListener("pointerup", function () {
+    try { localStorage.setItem("astroLegendCollapsed", S.legend_collapsed ? "1" : "0"); } catch (err) {}
+  });
+})();
+
+/* ═══════════════════════════════════════════════════════════
+    СВОРАЧИВАНИЕ ПАНЕЛИ (телефон)
+   ═══════════════════════════════════════════════════════════ */
+
+(function panelCollapse() {
+  var bar = document.getElementById("panelBar");
+  var label = document.getElementById("panelBarLabel");
+  var STORE = "astroPanelCollapsed";
+
+  function apply(collapsed, announce) {
+    document.body.classList.toggle("is-collapsed", collapsed);
+    bar.setAttribute("aria-expanded", collapsed ? "false" : "true");
+    label.textContent = collapsed ? "Показать панель" : "Свернуть панель";
+    bar.title = collapsed ? "Вернуть панель настроек" : "Свернуть панель — сцена займёт весь экран";
+    try { localStorage.setItem(STORE, collapsed ? "1" : "0"); } catch (err) {}
+    resizeCanvas();
+    if (announce) {
+      setStatus(collapsed
+        ? "Панель свернута: сцена занимает весь экран. Нажмите «Показать панель» (или проведите по ней вверх), чтобы вернуть настройки."
+        : "Панель развернута — настройки снова доступны.");
+    }
+  }
+
+  var startY = null, swiped = false;
+
+  bar.addEventListener("pointerdown", function (e) {
+    startY = e.clientY;
+    swiped = false;
+    try { bar.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  bar.addEventListener("pointermove", function (e) {
+    if (startY === null) return;
+    if (Math.abs(e.clientY - startY) > 8) swiped = true;
+  });
+  bar.addEventListener("pointerup", function (e) {
+    if (startY === null) return;
+    var dy = e.clientY - startY;
+    startY = null;
+    if (dy > 22) apply(true, true);          /* жест вниз — свернуть */
+    else if (dy < -22) apply(false, true);   /* жест вверх — развернуть */
+  });
+  bar.addEventListener("pointercancel", function () { startY = null; });
+
+  bar.addEventListener("click", function () {
+    if (swiped) { swiped = false; return; }  /* это был жест, а не нажатие */
+    apply(!document.body.classList.contains("is-collapsed"), true);
+  });
+
+  bar.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " " || e.key === "Spacebar") {
+      e.preventDefault();
+      apply(!document.body.classList.contains("is-collapsed"), true);
+    }
+  });
+
+  /* запоминаем выбор между запусками */
+  var saved = "0";
+  try { saved = localStorage.getItem(STORE) || "0"; } catch (err) {}
+  apply(saved === "1", false);
+})();
 
 /* ═══════════════════════════════════════════════════════════
     РАЗДЕЛИТЕЛЬ ПАНЕЛИ + ЗАПУСК
@@ -1827,10 +2020,16 @@ window.ASTRO = {
   /* принудительная перерисовка кадра — используется только для записи демо-роликов */
   requestRender: function () { needsRender = true; },
   /* скрыть легенду в записи демо-ролика (на работу приложения не влияет) */
-  hideLegend: function () { legendItems = function () { return []; }; }
+  hideLegend: function () { legendItems = function () { return []; }; },
+  /* открыть/свернуть легенду из кода (демо и автотесты) */
+  setLegendCollapsed: function (v) {
+    S.legend_collapsed = !!v;
+    try { localStorage.setItem("astroLegendCollapsed", v ? "1" : "0"); } catch (err) {}
+    needsRender = true;
+  }
 };
 
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4e941447a4a14d3',t:'MTc5MjY4MDAwMw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4e98014dd490e44',t:'MTc5MjY4MjU3Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
