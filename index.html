@@ -1,0 +1,1836 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Интерактивная 3D-модель координат v3.2: небесная сфера</title>
+<style>
+  html, body { margin:0; padding:0; height:100%; overflow:hidden;
+    font-family:"Segoe UI", Roboto, Arial, sans-serif; }
+
+  :root {
+    --bg:#090924; --panel:#0e0e30; --group-border:#2a2a5e; --group-bg:transparent;
+    --group-title:#6ba3ff; --label:#aaaaaa; --input-bg:#161650; --input-border:#2a2a5e;
+    --input-color:#eeeeee; --chk:#cccccc; --chk-border:#3d3d7a; --hdr:#8fb4ff; --hdr-hover:#bfd4ff;
+    --btn-bg:#1a1a55; --btn-border:#2a2a5e; --btn-color:#dddddd; --btn-hover:#252570;
+    --btn-hover-border:#5588ff; --code-bg:#080820; --code-color:#cccccc;
+    --status-bg:#081024; --status-color:#a6b9dc; --status-border:#22315c;
+    --mode-desc:#a6b9dc; --title-color:#88bbff; --title-bg:#090925; --title-border:#222255;
+    --divider:#1b1b45; --badge-bg:rgba(20,22,58,.82); --badge-color:#cfe0ff; --badge-border:#2f3d78;
+    --legend-hint:#aabee1;
+  }
+  body.light {
+    --bg:#edf6ff; --panel:#f3f6fb; --group-border:#c6d2e8; --group-bg:#f7f9fd;
+    --group-title:#1f4fa3; --label:#34405a; --input-bg:#ffffff; --input-border:#c6d2e8;
+    --input-color:#172033; --chk:#24314f; --chk-border:#8aa0c8; --hdr:#1f4fa3; --hdr-hover:#355fb4;
+    --btn-bg:#e8eef9; --btn-border:#bccbe6; --btn-color:#172033; --btn-hover:#dce8fb;
+    --btn-hover-border:#557fd4; --code-bg:#ffffff; --code-color:#172033;
+    --status-bg:#eef3fb; --status-color:#34405a; --status-border:#c6d2e8;
+    --mode-desc:#34405a; --title-color:#1f4fa3; --title-bg:#ffffff; --title-border:#c6d2e8;
+    --divider:#c9d6ea; --badge-bg:rgba(255,255,255,.86); --badge-color:#1f4fa3; --badge-border:#b9cbe8;
+    --legend-hint:#4b5c78;
+  }
+
+  body { display:flex; flex-direction:column; background:var(--status-bg); height:100dvh; }
+  #app { flex:1 1 auto; display:flex; min-height:0; min-width:0; }
+
+  #stage { position:relative; flex:1 1 auto; min-width:0; min-height:0; background:var(--bg); }
+  #scene { display:block; width:100%; height:100%; touch-action:none; cursor:grab; }
+  #scene:active { cursor:grabbing; }
+
+  #badge {
+    position:absolute; top:10px; left:50%; transform:translateX(-50%);
+    max-width:calc(100% - 24px); box-sizing:border-box;
+    padding:6px 14px; border-radius:999px; border:1px solid var(--badge-border);
+    background:var(--badge-bg); color:var(--badge-color);
+    font-size:11.5px; font-weight:700; text-align:center; letter-spacing:.2px;
+    pointer-events:none; user-select:none; white-space:nowrap; overflow:hidden;
+    text-overflow:ellipsis; backdrop-filter:blur(3px);
+  }
+
+  #divider { flex:0 0 5px; width:5px; background:var(--divider); cursor:col-resize; }
+
+  #panelWrap { flex:0 0 400px; width:400px; min-width:320px; max-width:620px;
+    overflow-y:auto; overflow-x:hidden; background:var(--panel); -webkit-overflow-scrolling:touch; }
+
+  #panel { padding:10px 12px 16px 12px; box-sizing:border-box; }
+
+  #title { color:var(--title-color); background:var(--title-bg); border:1px solid var(--title-border);
+    border-radius:6px; padding:8px; margin-bottom:6px; text-align:center;
+    font-size:15px; font-weight:700; }
+
+  .themeRow { display:flex; align-items:center; gap:8px; margin:2px 0 6px 0; }
+  .themeRow .lbl { color:var(--label); font-size:11px; }
+  .themeRow select { flex:1 1 auto; }
+
+  #modeDesc { color:var(--mode-desc); font-size:11px; line-height:1.35; margin-bottom:2px; }
+
+  .sect { margin:0; }
+  .hdr { display:block; width:100%; text-align:left; background:transparent; border:none;
+    color:var(--hdr); font-size:13px; font-weight:700; padding:6px 0 2px 0; cursor:pointer;
+    font-family:inherit; }
+  .hdr:hover { color:var(--hdr-hover); }
+
+  .group { border:1px solid var(--group-border); border-radius:8px; background:var(--group-bg);
+    margin:4px 0 6px 0; padding:10px; display:flex; flex-direction:column; gap:6px;
+    font-size:12px; color:var(--chk); }
+  .group.hidden { display:none; }
+
+  .row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .row .lbl { color:var(--label); font-size:11px; }
+  .hint { color:var(--label); font-size:11px; line-height:1.35; }
+
+  label.chk { display:flex; align-items:flex-start; gap:7px; color:var(--chk); font-size:12px;
+    line-height:1.25; cursor:pointer; }
+  label.chk input[type=checkbox] { appearance:none; -webkit-appearance:none; flex:0 0 auto;
+    width:16px; height:16px; margin:0; background:var(--input-bg); border:1px solid var(--chk-border);
+    border-radius:2px; cursor:pointer; position:relative; }
+  label.chk input[type=checkbox]:checked { background:var(--input-bg); border-color:#77aaff; }
+  label.chk input[type=checkbox]:checked::after {
+    content:""; position:absolute; left:4px; top:1px; width:5px; height:9px;
+    border:solid #77aaff; border-width:0 2px 2px 0; transform:rotate(42deg); }
+  body.light label.chk input[type=checkbox]:checked::after { border-color:#3366cc; }
+
+  select, input[type=number] {
+    background:var(--input-bg); border:1px solid var(--input-border); border-radius:5px;
+    padding:5px 7px; color:var(--input-color); font-size:12px; font-family:inherit;
+    box-sizing:border-box; min-width:0;
+  }
+  select:focus, input[type=number]:focus { outline:none; border-color:var(--btn-hover-border); }
+  input[type=number] { width:104px; text-align:right; }
+  .frow { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .frow label { color:var(--label); font-size:11px; line-height:1.3; }
+  .frow.hidden { display:none; }
+
+  button.btn { background:var(--btn-bg); border:1px solid var(--btn-border); border-radius:5px;
+    padding:6px 12px; color:var(--btn-color); font-size:12px; font-family:inherit; cursor:pointer;
+    flex:1 1 auto; }
+  button.btn:hover { background:var(--btn-hover); border-color:var(--btn-hover-border); }
+  button.btn.wide { flex:1 1 100%; width:100%; }
+
+  #calcbox { margin:0; background:var(--code-bg); color:var(--code-color);
+    border:1px solid var(--group-border); border-radius:5px; padding:8px;
+    font-family:Consolas, "Courier New", monospace; font-size:11px; line-height:1.35;
+    white-space:pre-wrap; word-break:break-word; min-height:240px; }
+
+  #statusbar { flex:0 0 auto; background:var(--status-bg); color:var(--status-color);
+    border-top:1px solid var(--status-border); padding:4px 10px; font-size:11.5px;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  #modal { position:fixed; inset:0; background:rgba(2,4,16,.66); display:none;
+    align-items:center; justify-content:center; padding:16px; box-sizing:border-box; z-index:50; }
+  #modal.open { display:flex; }
+  #modalBox { width:min(980px,100%); max-height:min(760px,100%); display:flex;
+    flex-direction:column; gap:10px; background:var(--panel); border:1px solid var(--group-border);
+    border-radius:10px; padding:14px; box-sizing:border-box; }
+  #modalTitle { color:var(--group-title); font-size:14px; font-weight:700; }
+  #modalText { flex:1 1 auto; overflow:auto; margin:0; white-space:pre-wrap; color:var(--code-color);
+    background:var(--code-bg); border:1px solid var(--group-border); border-radius:6px;
+    padding:10px; font-family:Consolas, "Courier New", monospace; font-size:11.5px; line-height:1.4; }
+  #modalBox button.btn { flex:0 0 auto; }
+
+  @media (max-width: 820px) {
+    #app { flex-direction:column; }
+    #divider { display:none; }
+    #stage { flex:0 0 auto; height:52dvh; }
+    #panelWrap { flex:1 1 auto; width:auto; min-width:0; max-width:none;
+      border-top:1px solid var(--group-border); }
+    #badge { font-size:10px; padding:5px 10px; white-space:normal; }
+    input[type=number] { width:92px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="stage">
+    <canvas id="scene"></canvas>
+    <div id="badge">МАКЕТ для QR: та же математика и оформление, что в Python-программе v3.2.</div>
+  </div>
+  <div id="divider"></div>
+  <div id="panelWrap"><div id="panel">
+
+    <div id="title">Интерактивная модель координат v3.2</div>
+
+    <div class="themeRow">
+      <span class="lbl">Тема:</span>
+      <select id="themeSel" data-help="Переключает оформление программы: темная тема удобна для проекции и доклада, светлая — для печати и работы при ярком освещении.">
+        <option>Темная</option>
+        <option>Светлая</option>
+      </select>
+    </div>
+
+    <div id="modeDesc">Режим: Небесная сфера. Модель показывает основные элементы геодезической астрономии: горизонт, экватор, ось мира, меридиан, эклиптику и светило.</div>
+
+    <div class="sect">
+      <button class="hdr" type="button">▼ Вращение и камера</button>
+      <div class="group">
+        <label class="chk"><input type="checkbox" id="autoChk"
+          data-help="Включает медленное автоматическое вращение сцены. Для точного рассмотрения схемы обычно оставляется выключенным.">Автоматическое вращение</label>
+        <div class="row">
+          <button class="btn" type="button" id="pauseBtn"
+            data-help="Быстро включает или отключает автоматическое вращение без изменения остальных параметров.">Пауза / Старт</button>
+          <button class="btn" type="button" id="resetBtn"
+            data-help="Возвращает камеру к начальному геодезическому виду: ось Z направлена вверх, сцена центрирована.">Сброс вида</button>
+        </div>
+        <label class="chk"><input type="checkbox" id="dayChk"
+          data-help="Анимирует суточное движение: изменяется часовой угол t, светило движется по суточной параллели.">Анимация суточного движения</label>
+        <label class="chk"><input type="checkbox" id="yearChk"
+          data-help="Анимирует годовое движение Солнца: меняется эклиптическая долгота λe и соответствующее склонение δ.">Анимация годового движения Солнца</label>
+        <div class="row">
+          <span class="lbl">Вращение:</span>
+          <select id="rotSel" style="flex:1 1 auto"
+            data-help="Выбирает способ вращения сцены: вокруг геодезической оси Z или свободное вращение по осям X/Y.">
+            <option>Вокруг оси Z</option>
+            <option>По осям X/Y</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="sect">
+      <button class="hdr" type="button">▼ Координаты наблюдателя (геодезический порядок)</button>
+      <div class="group">
+        <div class="frow">
+          <label for="lat">B / φ — широта:</label>
+          <input type="number" id="lat" value="55" min="-90" max="90" step="1"
+            data-help="B / φ — геодезическая или географическая широта наблюдателя. Определяет высоту полюса мира над горизонтом и наклон горизонта относительно небесного экватора.">
+        </div>
+        <div class="frow">
+          <label for="lon">L / λ — долгота:</label>
+          <input type="number" id="lon" value="0" min="-180" max="180" step="1"
+            data-help="L / λ — долгота наблюдателя. В учебной модели задает положение локального меридиана относительно начального направления.">
+        </div>
+      </div>
+    </div>
+
+    <div class="sect">
+      <button class="hdr" type="button">▼ Координаты светила</button>
+      <div class="group">
+        <div class="frow">
+          <label for="bodySys">Система светила:</label>
+          <select id="bodySys" style="flex:1 1 auto"
+            data-help="Определяет, из каких координат вычисляется положение светила M: из прямого восхождения α и склонения δ; из часового угла t и δ; из A,h; или из λe,β.">
+            <option>Экваториальная α,δ</option>
+            <option>Часовая t,δ</option>
+            <option>Горизонтальная</option>
+            <option>Эклиптическая</option>
+          </select>
+        </div>
+        <div class="frow" data-key="A">
+          <label for="az">A — азимут:</label>
+          <input type="number" id="az" value="120" min="0" max="360" step="1"
+            data-help="A — астрономический азимут: угол вдоль горизонта от точки юга к западу (как в учебнике). Геодезический азимут A' = A + 180°.">
+        </div>
+        <div class="frow" data-key="h">
+          <label for="h">h — высота:</label>
+          <input type="number" id="h" value="35" min="-90" max="90" step="1"
+            data-help="h — высота светила над математическим горизонтом. Если h > 0, светило над горизонтом; если h < 0, под горизонтом.">
+        </div>
+        <div class="frow" data-key="delta">
+          <label for="dec">δ — склонение:</label>
+          <input type="number" id="dec" value="20" min="-90" max="90" step="1"
+            data-help="δ — склонение светила: угловое расстояние от небесного экватора к северному или южному полюсу мира.">
+        </div>
+        <div class="frow" data-key="hour">
+          <label for="hour">t — часовой угол:</label>
+          <input type="number" id="hour" value="30" min="0" max="360" step="1"
+            data-help="t — часовой угол: угол суточного вращения от меридиана наблюдателя до круга склонения светила.">
+        </div>
+        <div class="frow" data-key="ra">
+          <label for="ra">α — прямое восхождение:</label>
+          <input type="number" id="ra" value="45" min="0" max="360" step="1"
+            data-help="α — прямое восхождение: координата второй экваториальной системы, отсчитываемая от точки весеннего равноденствия; 1h = 15°.">
+        </div>
+        <div class="frow" data-key="ecl_lon">
+          <label for="eclLon">λe — эклипт. долгота:</label>
+          <input type="number" id="eclLon" value="60" min="0" max="360" step="1"
+            data-help="λe — эклиптическая долгота: дуга эклиптики от точки весеннего равноденствия до круга широты светила.">
+        </div>
+        <div class="frow" data-key="ecl_lat">
+          <label for="eclLat">β — эклипт. широта:</label>
+          <input type="number" id="eclLat" value="10" min="-90" max="90" step="1"
+            data-help="β — эклиптическая широта: угловое расстояние светила от плоскости эклиптики.">
+        </div>
+        <div class="frow" data-key="eps">
+          <label for="eps">ε — наклон эклиптики:</label>
+          <input type="number" id="eps" value="23.43" min="0" max="45" step="0.1"
+            data-help="ε — наклон эклиптики к небесному экватору. Среднее учебное значение около 23.43°, определяет тропики и полярные круги.">
+        </div>
+      </div>
+    </div>
+
+    <div class="sect">
+      <button class="hdr" type="button">▼ Отображение элементов</button>
+      <div class="group">
+        <div class="hint">Кнопки включают только элементы выбранной системы:</div>
+        <div id="sysButtons"></div>
+        <div id="checks"></div>
+      </div>
+    </div>
+
+    <div class="sect">
+      <button class="hdr" type="button">▼ Пересчет и пояснения</button>
+      <div class="group">
+        <pre id="calcbox"></pre>
+        <button class="btn wide" type="button" id="glossaryBtn"
+          data-help="Открывает словарь: определения оси мира, экватора, горизонта, эклиптики, суточной параллели, вертикала, альмукантарата и всех координат.">Определения величин</button>
+        <button class="btn wide" type="button" id="helpBtn"
+          data-help="Открывает подробную справку профессионального типа: назначение модели, элементы сферы, координаты, формулы и управление.">Как работает программа и формулы</button>
+      </div>
+    </div>
+
+  </div></div>
+</div>
+
+<div id="statusbar">Готово. Наведите курсор на любой элемент управления — здесь появится пояснение.</div>
+
+<div id="modal">
+  <div id="modalBox">
+    <div id="modalTitle"></div>
+    <pre id="modalText"></pre>
+    <button class="btn" type="button" id="modalClose">Закрыть</button>
+  </div>
+</div>
+
+<script>
+(function () {
+"use strict";
+
+/* ═══════════════════════════════════════════════════════════
+    МАТЕМАТИКА (порт 1:1 из ellipsoid_app.py v3.2)
+   ═══════════════════════════════════════════════════════════ */
+
+var DEG = Math.PI / 180.0;
+var RAD = 180.0 / Math.PI;
+
+function degToRad(v) { return v * DEG; }
+function radToDeg(v) { return v * RAD; }
+function clamp(v, lo, hi) { return v < lo ? lo : (v > hi ? hi : v); }
+
+function vecAdd(a, b) { return [a[0] + b[0], a[1] + b[1], a[2] + b[2]]; }
+function vecSub(a, b) { return [a[0] - b[0], a[1] - b[1], a[2] - b[2]]; }
+function vecScale(a, s) { return [a[0] * s, a[1] * s, a[2] * s]; }
+function vecDot(a, b) { return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; }
+function vecCross(a, b) {
+  return [a[1] * b[2] - a[2] * b[1],
+          a[2] * b[0] - a[0] * b[2],
+          a[0] * b[1] - a[1] * b[0]];
+}
+function vecLen(a) { return Math.sqrt(vecDot(a, a)); }
+function vecNorm(a) {
+  var l = vecLen(a);
+  if (l < 1e-9) return [1.0, 0.0, 0.0];
+  return [a[0] / l, a[1] / l, a[2] / l];
+}
+
+function circleBasis(normal) {
+  normal = vecNorm(normal);
+  var helper = [0.0, 0.0, 1.0];
+  if (Math.abs(vecDot(normal, helper)) > 0.92) helper = [0.0, 1.0, 0.0];
+  var u = vecNorm(vecCross(normal, helper));
+  var v = vecNorm(vecCross(normal, u));
+  return [u, v];
+}
+
+function localBasis(latDeg, lonDeg) {
+  if (lonDeg === undefined) lonDeg = 0.0;
+  var lat = degToRad(latDeg), lon = degToRad(lonDeg);
+  var up = [Math.cos(lat) * Math.cos(lon), Math.cos(lat) * Math.sin(lon), Math.sin(lat)];
+  var east = [-Math.sin(lon), Math.cos(lon), 0.0];
+  var north = [-Math.sin(lat) * Math.cos(lon), -Math.sin(lat) * Math.sin(lon), Math.cos(lat)];
+  return [vecNorm(up), vecNorm(north), vecNorm(east)];
+}
+
+/* h — высота; A — астрономический азимут: от точки юга к западу. A' = A + 180°. */
+function horizontalToCartesian(hDeg, aDeg, latDeg, lonDeg, radius) {
+  if (lonDeg === undefined) lonDeg = 0.0;
+  if (radius === undefined) radius = 1.0;
+  var h = degToRad(hDeg);
+  var az = degToRad(aDeg + 180.0);
+  var lb = localBasis(latDeg, lonDeg), up = lb[0], north = lb[1], east = lb[2];
+  var horiz = vecAdd(vecScale(north, Math.cos(az)), vecScale(east, Math.sin(az)));
+  var p = vecAdd(vecScale(up, Math.sin(h)), vecScale(horiz, Math.cos(h)));
+  return vecScale(vecNorm(p), radius);
+}
+
+/* Первая экваториальная система: Q = (cos L, sin L, 0), west = (sin L, -cos L, 0),
+   eq = Q·cos t + west·sin t, P = (0,0,sin δ) + eq·cos δ. */
+function equatorialToCartesian(decDeg, hourDeg, latDeg, lonDeg, radius) {
+  if (latDeg === undefined) latDeg = 55.0;
+  if (lonDeg === undefined) lonDeg = 0.0;
+  if (radius === undefined) radius = 1.0;
+  var dec = degToRad(decDeg);
+  var t = degToRad(hourDeg);
+  var lon = degToRad(lonDeg);
+  var q = [Math.cos(lon), Math.sin(lon), 0.0];
+  var west = [Math.sin(lon), -Math.cos(lon), 0.0];
+  var eqDir = vecAdd(vecScale(q, Math.cos(t)), vecScale(west, Math.sin(t)));
+  var p = vecAdd([0.0, 0.0, Math.sin(dec)], vecScale(eqDir, Math.cos(dec)));
+  return vecScale(vecNorm(p), radius);
+}
+
+function raDecToCartesian(raDeg, decDeg, radius) {
+  if (radius === undefined) radius = 1.0;
+  var ra = degToRad(raDeg), dec = degToRad(decDeg);
+  return [radius * Math.cos(dec) * Math.cos(ra),
+          radius * Math.cos(dec) * Math.sin(ra),
+          radius * Math.sin(dec)];
+}
+
+function eclipticNormal(epsDeg) {
+  var eps = degToRad(epsDeg);
+  return [0.0, -Math.sin(eps), Math.cos(eps)];
+}
+
+function eclipticToCartesian(lonDeg, latDeg, epsDeg, radius) {
+  if (radius === undefined) radius = 1.0;
+  var lam = degToRad(lonDeg), beta = degToRad(latDeg), eps = degToRad(epsDeg);
+  var u = [1.0, 0.0, 0.0];
+  var v = [0.0, Math.cos(eps), Math.sin(eps)];
+  var n = eclipticNormal(epsDeg);
+  var p = vecAdd(
+    vecScale(vecAdd(vecScale(u, Math.cos(lam)), vecScale(v, Math.sin(lam))), Math.cos(beta)),
+    vecScale(n, Math.sin(beta))
+  );
+  return vecScale(vecNorm(p), radius);
+}
+
+/* Угол в [0, 360). Отличие от 360° на ошибку округления считается нулём. */
+function wrap360(angle) {
+  var v = angle % 360.0;
+  if (v < 0.0) v += 360.0;
+  return v > 360.0 - 1e-9 ? 0.0 : v;
+}
+
+/* Формат с двумя знаками без «-0.00». */
+function f2(x) {
+  var v = Math.round(x * 100.0) / 100.0 + 0.0;
+  if (Object.is(v, -0)) v = 0.0;
+  return v.toFixed(2);
+}
+
+/* Разность двух углов в градусах с учётом перехода через 360°. */
+function angleDiff(a, b) {
+  var v = (a - b + 180.0) % 360.0;
+  if (v < 0.0) v += 360.0;
+  return Math.abs(v - 180.0);
+}
+
+/* Координаты светила во ВСЕХ системах — только проекциями на оси. */
+function bodyCoordinates(pos, latDeg, lonDeg, epsDeg) {
+  var r = vecLen(pos);
+  if (r < 1e-12) return null;
+  var u = vecScale(pos, 1.0 / r);
+  var lb = localBasis(latDeg, lonDeg), up = lb[0], north = lb[1], east = lb[2];
+  var h = radToDeg(Math.asin(clamp(vecDot(u, up), -1.0, 1.0)));
+  var azGeod = wrap360(radToDeg(Math.atan2(vecDot(u, east), vecDot(u, north))));
+  var dec = radToDeg(Math.asin(clamp(u[2], -1.0, 1.0)));
+  var ra = wrap360(radToDeg(Math.atan2(u[1], u[0])));
+  var eps = degToRad(epsDeg);
+  var yE = u[1] * Math.cos(eps) + u[2] * Math.sin(eps);
+  var zE = -u[1] * Math.sin(eps) + u[2] * Math.cos(eps);
+  return {
+    h: h, z: 90.0 - h,
+    az: wrap360(azGeod - 180.0), az_geod: azGeod,
+    dec: dec, p: 90.0 - dec,
+    ra: ra, ra_h: ra / 15.0, hour: wrap360(lonDeg - ra),
+    ecl_lon: wrap360(radToDeg(Math.atan2(yE, u[0]))),
+    ecl_lat: radToDeg(Math.asin(clamp(zE, -1.0, 1.0)))
+  };
+}
+
+/* Невязка между справочными формулами и положением светила (должна быть 0). */
+function selfcheckCoordinates(c, latDeg) {
+  var phi = degToRad(latDeg), dec = degToRad(c.dec), t = degToRad(c.hour);
+  var sF = Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.cos(t);
+  var dh = radToDeg(Math.abs(Math.sin(degToRad(c.h)) - sF));
+  var dAz = 0.0;
+  if (Math.abs(c.h) < 89.9 && Math.abs(c.dec) < 89.9) {
+    var aF = radToDeg(Math.atan2(Math.cos(dec) * Math.sin(t),
+      Math.cos(dec) * Math.cos(t) * Math.sin(phi) - Math.sin(dec) * Math.cos(phi))) % 360.0;
+    if (aF < 0) aF += 360.0;
+    dAz = angleDiff(aF, c.az);
+  }
+  return { dh: dh, dA: dAz };
+}
+
+function altitudeFromEquatorial(latDeg, decDeg, hourDeg) {
+  var lat = degToRad(latDeg), dec = degToRad(decDeg), hour = degToRad(hourDeg);
+  var value = Math.sin(lat) * Math.sin(dec) + Math.cos(lat) * Math.cos(dec) * Math.cos(hour);
+  return radToDeg(Math.asin(clamp(value, -1, 1)));
+}
+
+function visibilityStatus(latDeg, decDeg) {
+  var limit = 90.0 - Math.abs(latDeg);
+  if (Math.abs(decDeg) < limit) return "Светило восходит и заходит";
+  if (latDeg * decDeg > 0) return "Светило незаходящее для данной широты";
+  return "Светило невосходящее для данной широты";
+}
+
+/* ═══════════════════════════════════════════════════════════
+    СОСТОЯНИЕ СЦЕНЫ
+   ═══════════════════════════════════════════════════════════ */
+
+var R = 3.0;          /* радиус сферы */
+var DIST = 9.0;       /* d — расстояние камеры: f = d / (d - z) */
+var FADE = Math.max(R * 0.045, 0.025);
+var LIM2 = (R * 1.05) * (R * 1.05);
+var HIDDEN_ALPHA = 0.24;
+
+var S = {
+  mode: "Небесная сфера",
+  theme: "dark",
+  rot_x: -90.0, rot_y: 0.0, rot_z: 0.0,
+  rotation_mode: "Z",
+  zoom: -12.0, zoom_target: -12.0,
+  auto_rotate: false,
+  animate_day: false,
+  animate_year: false,
+  lat: 55.0, lon: 0.0,
+  h: 35.0, az: 120.0,
+  dec: 20.0, hour: 30.0, ra: 45.0,
+  ecl_lon: 60.0, ecl_lat: 10.0, eps: 23.43,
+  body_system: "Экваториальная α,δ",
+  show_horizon: false, show_equator: false, show_world_axis: false,
+  show_meridian: false, show_zenith: false, show_ecliptic: false,
+  show_geographic: false, show_tropics: false, show_polar_circles: false,
+  show_daily_parallel: false, show_declination_circle: false,
+  show_vertical_circle: false, show_almucantar: false,
+  show_body: true, show_labels: true, show_cartesian_axes: true,
+  legend_scroll: 0
+};
+
+var AUTO_ROTATE_SPEED = 10.6;
+var DAY_SPEED = 21.2;
+var YEAR_SPEED = 3.64;
+var INERTIA_FRICTION = 3.2;
+var ZOOM_RESPONSE = 14.0;
+
+/* Цвета — один в один по заданию */
+var COL = {
+  axisX: "#FF5555", axisY: "#3DDC5A", axisZ: "#4A8BFF",
+  worldAxis: "#E6B437", equator: "#19D7E6", horizon: "#00BE8C",
+  meridian: "#F03DC7", zenith: "#5A8CFF", ecliptic: "#19E64A",
+  daily: "#F03333", declination: "#3333FF", vertical: "#B8B8FF",
+  almucantar: "#FF8000", body: "#FF2222",
+  tropics: "#F0A528", polar: "#B973FF",
+  geoPrime: "#1AA6FF", geoMeridian: "#008C80", geoParallel: "#00CCA6",
+  observer: "#FFF240", equinox: "#FF3333", solstice: "#FFB333",
+  white: "#FFFFFF"
+};
+
+/* ═══════════════════════════════════════════════════════════
+    ХОЛСТ, ПРОЕКЦИЯ, СБОР ПРИМИТИВОВ
+   ═══════════════════════════════════════════════════════════ */
+
+var canvas = document.getElementById("scene");
+var ctx = canvas.getContext("2d");
+var cssW = 1, cssH = 1, CX = 0, CY = 0, PPU = 1, DPR = 1;
+var M = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+var depthRow = [0, 0, 1];
+var runs = [], labels = [];
+var legendRect = null;
+var needsRender = true;
+var SEG = 160;
+
+var RGB_CACHE = {};
+function rgbOf(hex) {
+  var v = RGB_CACHE[hex];
+  if (!v) {
+    v = [parseInt(hex.substr(1, 2), 16), parseInt(hex.substr(3, 2), 16), parseInt(hex.substr(5, 2), 16)];
+    RGB_CACHE[hex] = v;
+  }
+  return v;
+}
+function rgba(hex, a) {
+  var c = rgbOf(hex);
+  return "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + a + ")";
+}
+
+function resizeCanvas() {
+  var host = canvas.parentElement;
+  var r = host.getBoundingClientRect();
+  DPR = Math.min(window.devicePixelRatio || 1, 2);
+  cssW = Math.max(1, Math.round(r.width));
+  cssH = Math.max(1, Math.round(r.height));
+  canvas.width = Math.max(1, Math.round(cssW * DPR));
+  canvas.height = Math.max(1, Math.round(cssH * DPR));
+  CX = cssW / 2;
+  CY = cssH / 2;
+  SEG = cssW < 900 || cssH < 560 ? 112 : 160;
+  needsRender = true;
+}
+
+function mul3(A, B) {
+  var C = [[0, 0, 0], [0, 0, 0], [0, 0, 0]];
+  for (var i = 0; i < 3; i++) {
+    for (var j = 0; j < 3; j++) {
+      C[i][j] = A[i][0] * B[0][j] + A[i][1] * B[1][j] + A[i][2] * B[2][j];
+    }
+  }
+  return C;
+}
+
+/* OpenGL: T · Rx · Ry · Rz — вершина проходит Rz, затем Ry, затем Rx. */
+function updateMatrix() {
+  var rz = degToRad(S.rot_z), ry = degToRad(S.rot_y), rx = degToRad(S.rot_x);
+  var cz = Math.cos(rz), sz = Math.sin(rz);
+  var cy = Math.cos(ry), sy = Math.sin(ry);
+  var cx = Math.cos(rx), sx = Math.sin(rx);
+  var Rz = [[cz, -sz, 0], [sz, cz, 0], [0, 0, 1]];
+  var Ry = [[cy, 0, sy], [0, 1, 0], [-sy, 0, cy]];
+  var Rx = [[1, 0, 0], [0, cx, -sx], [0, sx, cx]];
+  M = mul3(mul3(Rx, Ry), Rz);
+  depthRow = [M[2][0], M[2][1], M[2][2]];
+}
+
+function project(p) {
+  var x = M[0][0] * p[0] + M[0][1] * p[1] + M[0][2] * p[2];
+  var y = M[1][0] * p[0] + M[1][1] * p[1] + M[1][2] * p[2];
+  var z = M[2][0] * p[0] + M[2][1] * p[1] + M[2][2] * p[2];
+  var f = DIST / (DIST - z);
+  return [CX + f * x * PPU, CY - f * y * PPU, z];
+}
+
+function depthOf(p) {
+  return depthRow[0] * p[0] + depthRow[1] * p[1] + depthRow[2] * p[2];
+}
+
+/* Отрезки: дальняя сторона сферы — пунктир и alpha 0.24, ближняя — сплошная. */
+function addPolyline(pts, color, width, baseAlpha) {
+  var n = pts.length;
+  if (n < 2) return;
+  if (baseAlpha === undefined) baseAlpha = 1.0;
+  var pr = new Array(n);
+  for (var i = 0; i < n; i++) pr[i] = project(pts[i]);
+  var hid = Math.min(baseAlpha, HIDDEN_ALPHA);
+  var cur = null;
+  for (i = 0; i < n - 1; i++) {
+    var a = pts[i], b = pts[i + 1];
+    var mx = (a[0] + b[0]) * 0.5, my = (a[1] + b[1]) * 0.5, mz = (a[2] + b[2]) * 0.5;
+    var alpha = baseAlpha, far = false;
+    if (mx * mx + my * my + mz * mz <= LIM2) {
+      var v = (depthRow[0] * mx + depthRow[1] * my + depthRow[2] * mz + FADE) / (2 * FADE);
+      v = v < 0 ? 0 : (v > 1 ? 1 : v);
+      v = v * v * (3.0 - 2.0 * v);
+      alpha = hid + (baseAlpha - hid) * v;
+      far = v < 0.5;
+    }
+    var aq = Math.round(alpha * 40) / 40;
+    if (!cur || cur.far !== far || cur.alpha !== aq) {
+      if (cur) { cur.z = cur.zs / cur.zn; runs.push(cur); }
+      cur = { type: "line", far: far, alpha: aq, color: color, width: width,
+              pts: [pr[i]], zs: pr[i][2], zn: 1 };
+    }
+    cur.pts.push(pr[i + 1]);
+    cur.zs += pr[i + 1][2];
+    cur.zn++;
+  }
+  if (cur) { cur.z = cur.zs / cur.zn; runs.push(cur); }
+}
+
+/* Длинные отрезки делим, чтобы «видно/скрыто» менялось плавно у края сферы. */
+function addLine(p1, p2, color, width, alpha) {
+  if (alpha === undefined) alpha = 1.0;
+  var dx = p2[0] - p1[0], dy = p2[1] - p1[1], dz = p2[2] - p1[2];
+  var dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+  var steps = Math.max(2, Math.min(80, Math.floor(dist / Math.max(R * 0.035, 0.03))));
+  var pts = [];
+  for (var i = 0; i <= steps; i++) {
+    var t = i / steps;
+    pts.push([p1[0] + dx * t, p1[1] + dy * t, p1[2] + dz * t]);
+  }
+  addPolyline(pts, color, width, alpha);
+}
+
+function addDot(pos, color, radiusWorld, label, labelOffset) {
+  var p = project(pos);
+  var f = DIST / (DIST - p[2]);
+  runs.push({ type: "dot", x: p[0], y: p[1], r: Math.max(0.6, radiusWorld * f * PPU),
+              color: color, z: p[2] });
+  if (label) addLabel(label, pos, color, 1.0, labelOffset || 10);
+}
+
+function addLabel(text, pos, color, radial, offset) {
+  if (!S.show_labels) return;
+  labels.push({ text: text, pos: pos, color: color, radial: radial || 1.0,
+                offset: offset === undefined ? 10 : offset });
+}
+
+/* ── Кэш геометрии кругов (не зависит от камеры) ───────── */
+var circleCache = {};
+function cacheGet(key) { return circleCache[key]; }
+function cacheSet(key, pts) {
+  var keys = Object.keys(circleCache);
+  if (keys.length > 600) circleCache = {};
+  circleCache[key] = pts;
+}
+
+function greatCirclePoints(normal, radius, segments) {
+  if (radius === undefined) radius = R;
+  if (segments === undefined) segments = SEG;
+  var key = "g" + normal[0].toFixed(6) + "," + normal[1].toFixed(6) + "," + normal[2].toFixed(6) +
+            "," + radius.toFixed(6) + "," + segments;
+  var pts = cacheGet(key);
+  if (pts) return pts;
+  var uv = circleBasis(normal), u = uv[0], v = uv[1];
+  pts = [];
+  for (var i = 0; i <= segments; i++) {
+    var t = 2 * Math.PI * i / segments;
+    pts.push([u[0] * radius * Math.cos(t) + v[0] * radius * Math.sin(t),
+              u[1] * radius * Math.cos(t) + v[1] * radius * Math.sin(t),
+              u[2] * radius * Math.cos(t) + v[2] * radius * Math.sin(t)]);
+  }
+  cacheSet(key, pts);
+  return pts;
+}
+
+function smallCirclePoints(normal, offset, radius, segments) {
+  if (radius === undefined) radius = R;
+  if (segments === undefined) segments = SEG;
+  normal = vecNorm(normal);
+  var key = "s" + normal[0].toFixed(6) + "," + normal[1].toFixed(6) + "," + normal[2].toFixed(6) +
+            "," + offset.toFixed(6) + "," + radius.toFixed(6) + "," + segments;
+  var pts = cacheGet(key);
+  if (pts) return pts;
+  offset = clamp(offset, -radius + 1e-6, radius - 1e-6);
+  var center = vecScale(normal, offset);
+  var rr = Math.sqrt(Math.max(radius * radius - offset * offset, 0.0));
+  var uv = circleBasis(normal), u = uv[0], v = uv[1];
+  pts = [];
+  for (var i = 0; i <= segments; i++) {
+    var t = 2 * Math.PI * i / segments;
+    pts.push([center[0] + u[0] * rr * Math.cos(t) + v[0] * rr * Math.sin(t),
+              center[1] + u[1] * rr * Math.cos(t) + v[1] * rr * Math.sin(t),
+              center[2] + u[2] * rr * Math.cos(t) + v[2] * rr * Math.sin(t)]);
+  }
+  cacheSet(key, pts);
+  return pts;
+}
+
+/* ═══════════════════════════════════════════════════════════
+    ЭЛЕМЕНТЫ СЦЕНЫ
+   ═══════════════════════════════════════════════════════════ */
+
+function drawCartesianAxes() {
+  var L = 4.3;
+  addLine([-L, 0, 0], [L, 0, 0], COL.axisX, 2.4, 1.0);
+  addLine([0, -L, 0], [0, L, 0], COL.axisY, 2.4, 1.0);
+  addLine([0, 0, -L], [0, 0, L], COL.axisZ, 2.4, 1.0);
+  addLabel("X: 0° lon", [L + 0.25, 0, 0], COL.axisX);
+  addLabel("Y: 90°E", [0, L + 0.25, 0], COL.axisY);
+  addLabel("Z: Pn", [0, 0, L + 0.25], COL.axisZ);
+}
+
+function drawSphereWire(radius) {
+  var light = S.theme === "light";
+  var lineColor = light ? "#001F57" : "#59A6FF";
+  var lineAlpha = light ? 0.72 : 0.28;
+  var meridianWidth = light ? 1.65 : 1.05;
+  var parallelWidth = light ? 1.35 : 1.0;
+  var i, lon, normal;
+  for (i = 0; i < 24; i++) {                        /* каркас: 24 меридиана */
+    lon = 2 * Math.PI * i / 24;
+    normal = [-Math.sin(lon), Math.cos(lon), 0.0];
+    addPolyline(greatCirclePoints(normal, radius, SEG), lineColor, meridianWidth, lineAlpha);
+  }
+  for (var lat = -75; lat <= 75; lat += 15) {       /* параллели через 15° */
+    var pts = smallCirclePoints([0, 0, 1], radius * Math.sin(degToRad(lat)), radius, SEG);
+    addPolyline(pts, lineColor, parallelWidth, lineAlpha);
+  }
+  if (light) {
+    /* Три основных больших круга — читаемый внешний объём в светлой теме. */
+    var mainColor = "#001440", mainAlpha = 0.78;
+    addPolyline(greatCirclePoints([1, 0, 0], radius, SEG), mainColor, 1.9, mainAlpha);
+    addPolyline(greatCirclePoints([0, 1, 0], radius, SEG), mainColor, 1.9, mainAlpha);
+    addPolyline(greatCirclePoints([0, 0, 1], radius, SEG), mainColor, 1.9, mainAlpha);
+  }
+}
+
+function currentBody(radius) {
+  var body;
+  if (S.body_system === "Горизонтальная") {
+    body = horizontalToCartesian(S.h, S.az, S.lat, S.lon, radius);
+  } else if (S.body_system === "Экваториальная α,δ") {
+    body = raDecToCartesian(S.ra, S.dec, radius);
+  } else if (S.body_system === "Часовая t,δ") {
+    body = equatorialToCartesian(S.dec, S.hour, S.lat, S.lon, radius);
+  } else if (S.body_system === "Эклиптическая") {
+    body = eclipticToCartesian(S.ecl_lon, S.ecl_lat, S.eps, radius);
+  } else {
+    body = raDecToCartesian(S.ra, S.dec, radius);
+  }
+  var decCurrent = radToDeg(Math.asin(clamp(body[2] / Math.max(radius, 1e-9), -1.0, 1.0)));
+  return [body, decCurrent];
+}
+
+function drawGeographicElements(radius) {
+  addPolyline(greatCirclePoints([0, 1, 0], radius, SEG), COL.geoPrime, 1.8, 1.0);
+  var meridianNormal = [-Math.sin(degToRad(S.lon)), Math.cos(degToRad(S.lon)), 0.0];
+  addPolyline(greatCirclePoints(meridianNormal, radius, SEG), COL.geoMeridian, 2.0, 1.0);
+  addPolyline(smallCirclePoints([0, 0, 1], radius * Math.sin(degToRad(S.lat)), radius, SEG),
+              COL.geoParallel, 2.0, 1.0);
+  var p = vecScale(localBasis(S.lat, S.lon)[0], radius);
+  addDot(p, COL.observer, 0.075, "O");
+  addLine([0, 0, 0], p, COL.observer, 2.0, 0.75);
+  addLine(p, vecScale(vecNorm(p), radius * 1.35), COL.observer, 1.5, 0.6);
+}
+
+function drawTropicsPolar(radius) {
+  var pole = [0, 0, 1], pts, lat;
+  if (S.show_tropics) {
+    for (var i = 0; i < 2; i++) {
+      lat = i === 0 ? S.eps : -S.eps;
+      pts = smallCirclePoints(pole, radius * Math.sin(degToRad(lat)), radius, SEG);
+      addPolyline(pts, COL.tropics, 1.3, 0.9);
+    }
+  }
+  if (S.show_polar_circles) {
+    for (var j = 0; j < 2; j++) {
+      lat = j === 0 ? 90 - S.eps : -(90 - S.eps);
+      pts = smallCirclePoints(pole, radius * Math.sin(degToRad(lat)), radius, SEG);
+      addPolyline(pts, COL.polar, 1.3, 0.9);
+    }
+  }
+}
+
+function drawEclipticElements(radius) {
+  var n = eclipticNormal(S.eps);
+  addPolyline(greatCirclePoints(n, radius, SEG), COL.ecliptic, 2.8, 1.0);
+  addLine(vecScale(n, -radius * 1.12), vecScale(n, radius * 1.12), COL.ecliptic, 1.6, 0.7);
+  addDot(vecScale(n, radius), COL.ecliptic, 0.06, "R");
+  addDot(vecScale(n, -radius), COL.ecliptic, 0.06, "R'");
+  var defs = [
+    [0, "gamma", COL.equinox],
+    [180, "Omega", COL.equinox],
+    [90, "Solst N", COL.solstice],
+    [270, "Solst S", COL.solstice]
+  ];
+  for (var i = 0; i < defs.length; i++) {
+    var p = eclipticToCartesian(defs[i][0], 0, S.eps, radius);
+    addDot(p, defs[i][2], 0.065, defs[i][1]);
+  }
+}
+
+function labelsApart(p1, p2, minDx, minDy) {
+  if (minDx === undefined) minDx = 24.0;
+  if (minDy === undefined) minDy = 22.0;
+  var a = project(p1), b = project(p2);
+  return Math.abs(a[0] - b[0]) >= minDx || Math.abs(a[1] - b[1]) >= minDy;
+}
+
+function drawCelestialBody(radius) {
+  var cur = currentBody(radius);
+  var body = cur[0], decCurrent = cur[1];
+  var lb = localBasis(S.lat, S.lon), up = lb[0], north = lb[1];
+  var pole = [0, 0, 1];
+  if (!S.show_body) return;
+
+  addDot(body, COL.white, 0.135, null);
+  addDot(body, COL.body, 0.10, "M", 15);
+
+  if (S.show_cartesian_axes) {
+    addLine([0, 0, 0], body, COL.body, 2.0, 0.65);
+  }
+
+  if (S.show_almucantar) {
+    /* Высота ВЫЧИСЛЕНА по положению светила: dot(body, up), а не со слайдера h. */
+    var offset = vecDot(body, up);
+    addPolyline(smallCirclePoints(up, offset, radius, SEG), COL.almucantar, 1.8, 0.95);
+  }
+  if (S.show_vertical_circle) {
+    var vn = vecCross(up, body);
+    if (vecLen(vn) > 1e-6) {
+      addPolyline(greatCirclePoints(vn, radius, SEG), COL.vertical, 1.4, 0.85);
+    }
+  }
+  if (S.show_daily_parallel) {
+    addPolyline(smallCirclePoints(pole, radius * Math.sin(degToRad(decCurrent)), radius, SEG),
+                COL.daily, 1.6, 0.85);
+  }
+  if (S.show_declination_circle) {
+    var eqPoint = vecNorm([body[0], body[1], 0.0]);
+    if (vecLen(eqPoint) < 1e-6) eqPoint = [1.0, 0.0, 0.0];
+    var dn = vecCross(pole, eqPoint);
+    if (vecLen(dn) > 1e-6) {
+      addPolyline(greatCirclePoints(dn, radius, SEG), COL.declination, 1.5, 0.9);
+    }
+  }
+
+  if (S.show_vertical_circle) {
+    var hproj = vecSub(body, vecScale(up, vecDot(body, up)));
+    if (vecLen(hproj) > 1e-6) {
+      hproj = vecScale(vecNorm(hproj), radius);
+      addLine(hproj, body, "#FF5A33", 2.0, 0.8);
+      var hLabelPos = vecScale(vecAdd(hproj, body), 0.5);
+      if (labelsApart(hLabelPos, vecAdd(body, [0.08, 0.08, 0.08]))) {
+        addLabel("h", hLabelPos, "#FF5A33");
+      }
+    }
+  }
+  if (S.show_horizon) {
+    addLine([0, 0, 0], vecScale(north, radius), COL.horizon, 1.0, 0.5);
+  }
+}
+
+function drawCelestialMode() {
+  var radius = R;
+  drawSphereWire(radius);
+
+  var lb = localBasis(S.lat, S.lon), up = lb[0], north = lb[1], east = lb[2];
+  var pole = [0, 0, 1];
+
+  if (S.show_world_axis) {
+    addLine([0, 0, -radius * 1.18], [0, 0, radius * 1.18], COL.worldAxis, 2.2, 1.0);
+    addDot([0, 0, radius], COL.worldAxis, 0.07, "P");
+    addDot([0, 0, -radius], COL.worldAxis, 0.07, "P'");
+  }
+  if (S.show_equator) {
+    addPolyline(greatCirclePoints(pole, radius, SEG), COL.equator, 2.4, 1.0);
+  }
+  if (S.show_horizon) {
+    addPolyline(greatCirclePoints(up, radius, SEG), COL.horizon, 3.0, 1.0);
+    addLabel("N", vecScale(north, radius), COL.horizon, 1.1);
+    addLabel("S", vecScale(north, -radius), COL.horizon, 1.1);
+    addLabel("E", vecScale(east, radius), COL.horizon, 1.1);
+    addLabel("W", vecScale(east, -radius), COL.horizon, 1.1);
+  }
+  if (S.show_meridian) {
+    var normal = vecCross(up, pole);
+    if (vecLen(normal) < 1e-6) normal = east;
+    addPolyline(greatCirclePoints(normal, radius, SEG), COL.meridian, 3.2, 1.0);
+  }
+  if (S.show_zenith) {
+    addDot(vecScale(up, radius), COL.zenith, 0.07, "Z");
+    addDot(vecScale(up, -radius), COL.zenith, 0.07, "Z'");
+    addLine(vecScale(up, -radius * 1.15), vecScale(up, radius * 1.15), COL.zenith, 1.5, 0.7);
+  }
+  if (S.show_geographic) drawGeographicElements(radius);
+  if (S.show_tropics || S.show_polar_circles) drawTropicsPolar(radius);
+  if (S.show_ecliptic) drawEclipticElements(radius);
+
+  drawCelestialBody(radius);
+}
+
+/* ═══════════════════════════════════════════════════════════
+    ЛЕГЕНДА
+   ═══════════════════════════════════════════════════════════ */
+
+function legendItems() {
+  var items = [];
+  if (S.show_cartesian_axes) items.push(["Геодезические оси: X-Гринвич, Y-90E, Z-Pn", COL.axisZ]);
+  if (S.show_world_axis) items.push(["Ось мира PP'", COL.worldAxis]);
+  if (S.show_equator) items.push(["Небесный / земной экватор", COL.equator]);
+  if (S.show_horizon) items.push(["Математический горизонт SWNE", COL.horizon]);
+  if (S.show_meridian) items.push(["Небесный меридиан PZP'Z'", COL.meridian]);
+  if (S.show_zenith) items.push(["Отвесная линия, зенит и надир", COL.zenith]);
+  if (S.show_ecliptic) items.push(["Эклиптика", COL.ecliptic]);
+  if (S.show_geographic) items.push(["Географические круги наблюдателя", COL.geoParallel]);
+  if (S.show_body && S.show_daily_parallel) items.push(["Суточная параллель δ = const", COL.daily]);
+  if (S.show_body && S.show_declination_circle) items.push(["Круг склонения", COL.declination]);
+  if (S.show_body && S.show_vertical_circle) items.push(["Вертикал светила", COL.vertical]);
+  if (S.show_body && S.show_almucantar) items.push(["Альмукантарат h = const", COL.almucantar]);
+  if (S.show_tropics) items.push(["Тропики ±ε", COL.tropics]);
+  if (S.show_polar_circles) items.push(["Полярные круги ±(90°-ε)", COL.polar]);
+  if (S.show_body) items.push(["Светило M", COL.body]);
+  return items;
+}
+
+function drawLegend() {
+  var items = legendItems();
+  if (!items.length) { legendRect = null; return; }
+  var light = S.theme === "light";
+  var compact = cssW < 520 || cssH < 420;
+  var margin = compact ? 10 : 16;
+  var lineH = compact ? 16 : 20;
+  /* сколько строк реально влезает в половину кадра */
+  var fit = Math.max(2, Math.floor(((cssH * 0.55) - (compact ? 40 : 48)) / lineH));
+  var maxVisible = Math.min(9, fit);
+  var width = Math.min(compact ? 280 : 375, Math.max(180, cssW - 2 * margin));
+  var total = items.length;
+  var visible = Math.min(maxVisible, total);
+  var maxScroll = Math.max(0, total - visible);
+  S.legend_scroll = Math.round(clamp(S.legend_scroll, 0, maxScroll));
+  var headH = compact ? 40 : 48;
+  var height = headH + visible * lineH;
+  var x = margin, y = cssH - height - margin;
+  legendRect = { x: x, y: y, w: width, h: height };
+
+  roundRect(ctx, x, y, width, height, compact ? 8 : 10);
+  ctx.fillStyle = light ? "rgba(255,255,255,0.84)" : "rgba(5,8,24,0.80)";
+  ctx.fill();
+  ctx.lineWidth = 1;
+  ctx.strokeStyle = "rgba(80,115,180,0.71)";
+  ctx.stroke();
+
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.font = "bold " + (compact ? 11 : 13) + "px 'Segoe UI', Roboto, Arial, sans-serif";
+  ctx.fillStyle = light ? "#142038" : "#EBF2FF";
+  var title = "Легенда элементов сцены";
+  if (total > visible) title += "  (" + (S.legend_scroll + 1) + "-" + (S.legend_scroll + visible) + " из " + total + ")";
+  ctx.fillText(title, x + (compact ? 9 : 14), y + (compact ? 17 : 22));
+
+  ctx.font = (compact ? 10 : 12) + "px 'Segoe UI', Roboto, Arial, sans-serif";
+  var lineX0 = x + (compact ? 12 : 15);
+  var lineX1 = lineX0 + (compact ? 22 : 30);
+  var textX = x + (compact ? 40 : 55);
+  for (var i = 0; i < visible; i++) {
+    var label = items[S.legend_scroll + i][0];
+    var color = items[S.legend_scroll + i][1];
+    var yy = y + headH - 4 + i * lineH;
+    if (label.indexOf("Светило") === 0) {
+      ctx.beginPath();
+      ctx.arc(lineX0 + (compact ? 10 : 14), yy - (compact ? 3 : 6), compact ? 5 : 6, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.moveTo(lineX0, yy);
+      ctx.lineTo(lineX1, yy);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+    ctx.fillStyle = light ? "#4B5A78" : "#AABEE1";
+    ctx.fillText(label, textX, yy + (compact ? 3 : 4));
+  }
+  if (total > visible) {
+    ctx.font = (compact ? 9 : 10) + "px 'Segoe UI', Roboto, Arial, sans-serif";
+    ctx.fillStyle = light ? "#4B5A78" : "#AABEE1";
+    ctx.fillText("Прокрутка колесиком мыши по легенде", x + (compact ? 9 : 14), y + height - (compact ? 4 : 6));
+  }
+}
+
+function roundRect(c, x, y, w, h, r) {
+  c.beginPath();
+  c.moveTo(x + r, y);
+  c.lineTo(x + w - r, y);
+  c.quadraticCurveTo(x + w, y, x + w, y + r);
+  c.lineTo(x + w, y + h - r);
+  c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  c.lineTo(x + r, y + h);
+  c.quadraticCurveTo(x, y + h, x, y + h - r);
+  c.lineTo(x, y + r);
+  c.quadraticCurveTo(x, y, x + r, y);
+  c.closePath();
+}
+
+/* ═══════════════════════════════════════════════════════════
+    РЕНДЕР
+   ═══════════════════════════════════════════════════════════ */
+
+function renderLabels() {
+  if (!labels.length) return;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "alphabetic";
+  ctx.font = "bold 10px 'Segoe UI', Roboto, Arial, sans-serif";
+  for (var i = 0; i < labels.length; i++) {
+    var L = labels[i];
+    var p = project(L.pos);
+    if (L.radial !== 1.0) {
+      /* подпись стоит на 1.1·R, но «выносится» по экранному радиусу точки на сфере */
+      p = [CX + (p[0] - CX) * L.radial, CY + (p[1] - CY) * L.radial, p[2]];
+    }
+    if (p[0] < -60 || p[0] > cssW + 60 || p[1] < -60 || p[1] > cssH + 60) continue;
+    var r2 = L.pos[0] * L.pos[0] + L.pos[1] * L.pos[1] + L.pos[2] * L.pos[2];
+    var far = false;
+    if (r2 < (R * 1.06) * (R * 1.06)) {
+      far = (depthOf(L.pos) + FADE) / (2 * FADE) < 0.5;
+    }
+    var off = L.offset === undefined ? 10 : L.offset;
+    var x = Math.round(p[0] + off), y = Math.round(p[1] - off);
+    ctx.fillStyle = far ? "rgba(0,0,0,0.35)" : "rgba(0,0,0,0.82)";
+    ctx.fillText(L.text, x + 1, y + 1);
+    ctx.fillStyle = far ? rgba(L.color, 0.43) : L.color;
+    ctx.fillText(L.text, x, y);
+  }
+}
+
+function render() {
+  var light = S.theme === "light";
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  ctx.fillStyle = light ? "#EDF6FF" : "#090924";
+  ctx.fillRect(0, 0, cssW, cssH);
+
+  updateMatrix();
+  runs = [];
+  labels = [];
+  PPU = ((Math.min(cssW, cssH) / 2) / 4.4) * (12.0 / (-S.zoom));
+
+  if (S.show_cartesian_axes) drawCartesianAxes();
+  drawCelestialMode();
+
+  runs.sort(function (a, b) { return a.z - b.z; });
+
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  for (var i = 0; i < runs.length; i++) {
+    var r = runs[i];
+    if (r.type === "dot") {
+      ctx.beginPath();
+      ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2);
+      ctx.fillStyle = r.color;
+      ctx.fill();
+      continue;
+    }
+    if (r.pts.length < 2) continue;
+    ctx.beginPath();
+    ctx.moveTo(r.pts[0][0], r.pts[0][1]);
+    for (var k = 1; k < r.pts.length; k++) ctx.lineTo(r.pts[k][0], r.pts[k][1]);
+    ctx.lineWidth = r.far ? Math.max(0.8, r.width * 0.82) : r.width;
+    ctx.strokeStyle = rgba(r.color, r.alpha);
+    if (r.far) ctx.setLineDash([5, 5]); else ctx.setLineDash([]);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  renderLabels();
+  drawLegend();
+}
+
+/* ═══════════════════════════════════════════════════════════
+    ТЕКСТ ПАНЕЛИ (порт _update_text)
+   ═══════════════════════════════════════════════════════════ */
+
+function modeText(mode) {
+  var d = {
+    "Небесная сфера": "Базовая астрономическая схема: горизонт, экватор, ось мира, меридиан, зенит и надир.",
+    "Горизонтальная система": "Локальная система наблюдателя: азимут A, высота h, вертикал светила и альмукантарат.",
+    "Экваториальная система": "Система небесного экватора: склонение δ, часовой угол t, прямое восхождение α, круг склонения и суточная параллель.",
+    "Эклиптика": "Годовое движение Солнца: эклиптика, наклон ε, эклиптическая долгота λe, широта β, равноденствия и солнцестояния.",
+    "Географический сфероид": "Связь модели Земли с небесной сферой: широта B/φ, долгота L/λ, меридианы, параллели, тропики и полярные круги."
+  };
+  return d[mode] || "";
+}
+
+var calcbox = document.getElementById("calcbox");
+
+function updateText() {
+  var body = currentBody(R)[0];
+  var c = bodyCoordinates(body, S.lat, S.lon, S.eps);
+  var chk = selfcheckCoordinates(c, S.lat);
+  var status = visibilityStatus(S.lat, c.dec);
+  var t = "";
+  t += "Режим: " + S.mode + "\n\n";
+  t += "Назначение режима:\n";
+  t += "  " + modeText(S.mode) + "\n\n";
+  t += "Координаты наблюдателя (геодезический порядок):\n";
+  t += "  B / φ = " + f2(S.lat) + "° — широта\n";
+  t += "  L / λ = " + f2(S.lon) + "° — долгота\n\n";
+  t += "Светило M задано в системе: " + S.body_system + "\n";
+  t += "Его координаты во ВСЕХ системах (вычислены по положению M):\n\n";
+  t += "Горизонтальная система:\n";
+  t += "  A  = " + f2(c.az) + "° — астрономический азимут (от юга к западу)\n";
+  t += "  A' = " + f2(c.az_geod) + "° — геодезический азимут (A' = A + 180°)\n";
+  t += "  h  = " + f2(c.h) + "°,  z = " + f2(c.z) + "°  (z + h = 90°)\n\n";
+  t += "Первая экваториальная система:\n";
+  t += "  δ = " + f2(c.dec) + "°,  p = " + f2(c.p) + "°  (p + δ = 90°)\n";
+  t += "  t = " + f2(c.hour) + "° = " + f2(c.hour / 15.0) + "h\n\n";
+  t += "Вторая экваториальная система:\n";
+  t += "  α = " + f2(c.ra) + "° = " + f2(c.ra_h) + "h,  δ = " + f2(c.dec) + "°\n";
+  t += "  (в модели звёздное время s = L, поэтому t = L − α)\n\n";
+  t += "Эклиптическая система:\n";
+  t += "  λe = " + f2(c.ecl_lon) + "°,  β = " + f2(c.ecl_lat) + "°,  ε = " + f2(S.eps) + "°\n\n";
+  t += "Видимость: " + status + "\n\n";
+  t += "Самопроверка (формулы ↔ положение M на сцене):\n";
+  t += "  Δh = " + chk.dh.toFixed(6) + "°,  ΔA = " + chk.dA.toFixed(6) + "°  (должно быть 0)\n\n";
+  t += "Основные формулы:\n";
+  t += "  z + h = 90°\n";
+  t += "  p + δ = 90°\n";
+  t += "  1h = 15°\n";
+  t += "  sin h = sin φ sin δ + cos φ cos δ cos t\n";
+  t += "  |δ| < 90°-|φ| — восходит и заходит\n";
+  calcbox.textContent = t;
+}
+
+/* ═══════════════════════════════════════════════════════════
+    УПРАВЛЕНИЕ ПАНЕЛЬЮ
+   ═══════════════════════════════════════════════════════════ */
+
+var statusbar = document.getElementById("statusbar");
+function setStatus(msg) { statusbar.textContent = msg; }
+
+var CHECK_DEFS = [
+  ["horizon", "Математический горизонт SWNE", true],
+  ["equator", "Небесный / земной экватор", true],
+  ["world_axis", "Ось мира PP'", true],
+  ["meridian", "Небесный меридиан", true],
+  ["zenith", "Зенит Z и надир Z'", true],
+  ["ecliptic", "Эклиптика", true],
+  ["geographic", "Географические меридианы/параллели", true],
+  ["tropics", "Тропики", true],
+  ["polar", "Полярные круги", true],
+  ["daily", "Суточная параллель", true],
+  ["declination", "Круг склонения", true],
+  ["vertical", "Вертикал светила", true],
+  ["almucantar", "Альмукантарат", true],
+  ["body", "Светило M", true],
+  ["labels", "Подписи точек (P, Z, M, N/S/E/W)", true],
+  ["cartesian", "Декартовы оси", true]
+];
+
+var SYSTEM_DEFS = [
+  ["horizontal", "Горизонтальная система"],
+  ["first", "Первая экваториальная"],
+  ["second", "Вторая экваториальная"],
+  ["ecliptic", "Эклиптическая система"],
+  ["base", "Базовая небесная сфера"],
+  ["hide", "Скрыть все элементы"]
+];
+
+var checkEls = {};
+var sysButtons = {};
+
+(function buildChecks() {
+  var box = document.getElementById("checks");
+  var html = "";
+  for (var i = 0; i < CHECK_DEFS.length; i++) {
+    var key = CHECK_DEFS[i][0], text = CHECK_DEFS[i][1];
+    html += '<label class="chk"><input type="checkbox" data-check="' + key + '" checked ' +
+            'data-help="Показать или скрыть элемент сцены: ' + text.replace(/"/g, "&quot;") +
+            '. Легенда слева снизу автоматически обновляется по видимым объектам.">' + text + "</label>";
+  }
+  box.innerHTML = html;
+  var inputs = box.querySelectorAll("input[data-check]");
+  for (i = 0; i < inputs.length; i++) {
+    checkEls[inputs[i].getAttribute("data-check")] = inputs[i];
+    inputs[i].addEventListener("change", onDisplay);
+  }
+})();
+
+(function buildSystemButtons() {
+  var box = document.getElementById("sysButtons");
+  var html = "";
+  for (var i = 0; i < SYSTEM_DEFS.length; i++) {
+    html += '<button class="btn wide" type="button" data-sys="' + SYSTEM_DEFS[i][0] + '" ' +
+            'data-help="Включает только элементы системы «' + SYSTEM_DEFS[i][1] +
+            '» и обновляет легенду." style="margin-bottom:5px">' + SYSTEM_DEFS[i][1] + "</button>";
+  }
+  box.innerHTML = html;
+  var btns = box.querySelectorAll("button[data-sys]");
+  for (i = 0; i < btns.length; i++) {
+    sysButtons[btns[i].getAttribute("data-sys")] = btns[i];
+    btns[i].addEventListener("click", function () { showOnlySystem(this.getAttribute("data-sys")); });
+  }
+})();
+
+/* складные разделы */
+(function buildSections() {
+  var sects = document.querySelectorAll(".sect");
+  for (var i = 0; i < sects.length; i++) {
+    (function (sect) {
+      var hdr = sect.querySelector(".hdr");
+      var group = sect.querySelector(".group");
+      var title = hdr.textContent.replace(/^[▼▶]\s*/, "");
+      hdr.addEventListener("click", function () {
+        var collapsed = group.classList.toggle("hidden");
+        hdr.textContent = (collapsed ? "▶ " : "▼ ") + title;
+      });
+    })(sects[i]);
+  }
+})();
+
+var els = {
+  themeSel: document.getElementById("themeSel"),
+  autoChk: document.getElementById("autoChk"),
+  pauseBtn: document.getElementById("pauseBtn"),
+  resetBtn: document.getElementById("resetBtn"),
+  dayChk: document.getElementById("dayChk"),
+  yearChk: document.getElementById("yearChk"),
+  rotSel: document.getElementById("rotSel"),
+  lat: document.getElementById("lat"),
+  lon: document.getElementById("lon"),
+  az: document.getElementById("az"),
+  h: document.getElementById("h"),
+  dec: document.getElementById("dec"),
+  hour: document.getElementById("hour"),
+  ra: document.getElementById("ra"),
+  eclLon: document.getElementById("eclLon"),
+  eclLat: document.getElementById("eclLat"),
+  eps: document.getElementById("eps"),
+  bodySys: document.getElementById("bodySys"),
+  modeDesc: document.getElementById("modeDesc")
+};
+
+var FIELD_KEYS = { az: "A", h: "h", dec: "delta", hour: "hour", ra: "ra",
+                   eclLon: "ecl_lon", eclLat: "ecl_lat", eps: "eps" };
+
+function num(el, lo, hi, fallback) {
+  var v = parseFloat(el.value);
+  if (!isFinite(v)) v = fallback;
+  return clamp(v, lo, hi);
+}
+
+function onAstroParams() {
+  S.lat = num(els.lat, -90, 90, 55);
+  S.lon = num(els.lon, -180, 180, 0);
+  S.h = num(els.h, -90, 90, 35);
+  S.az = num(els.az, 0, 360, 120);
+  S.dec = num(els.dec, -90, 90, 20);
+  S.hour = num(els.hour, 0, 360, 30);
+  S.ra = num(els.ra, 0, 360, 45);
+  S.ecl_lon = num(els.eclLon, 0, 360, 60);
+  S.ecl_lat = num(els.eclLat, -90, 90, 10);
+  S.eps = num(els.eps, 0, 45, 23.43);
+  S.body_system = els.bodySys.value;
+  updateText();
+  needsRender = true;
+  setStatus("Координаты обновлены: B/φ, L/λ, A, h, δ, t, α, λe, β, ε пересчитаны в панели пояснений.");
+}
+
+function updateCoordinateFields(system) {
+  var visibleBySystem = {
+    "Экваториальная α,δ": { ra: 1, delta: 1 },
+    "Часовая t,δ": { hour: 1, delta: 1 },
+    "Горизонтальная": { A: 1, h: 1 },
+    "Эклиптическая": { ecl_lon: 1, ecl_lat: 1, eps: 1 }
+  };
+  var vis = visibleBySystem[system] || {};
+  var rows = document.querySelectorAll(".frow[data-key]");
+  for (var i = 0; i < rows.length; i++) {
+    var key = rows[i].getAttribute("data-key");
+    rows[i].classList.toggle("hidden", !vis[key]);
+  }
+}
+
+function onBodySystemChanged() {
+  updateCoordinateFields(els.bodySys.value);
+  onAstroParams();
+  var d = {
+    "Экваториальная α,δ": "Светило задается прямым восхождением α и склонением δ.",
+    "Часовая t,δ": "Светило задается часовым углом t и склонением δ.",
+    "Горизонтальная": "Светило задается азимутом A и высотой h над горизонтом.",
+    "Эклиптическая": "Светило задается эклиптической долготой λe, широтой β и наклоном ε."
+  };
+  setStatus(d[els.bodySys.value] || "Изменена система координат светила.");
+}
+
+function setCheck(key, value) {
+  var w = checkEls[key];
+  if (w) {
+    w.checked = value;
+  }
+}
+
+function showOnlySystem(name) {
+  var allKeys = ["horizon", "equator", "world_axis", "meridian", "zenith", "ecliptic",
+                 "geographic", "tropics", "polar", "daily", "declination",
+                 "vertical", "almucantar", "body", "labels", "cartesian"];
+  var presets = {
+    horizontal: { visible: ["body", "horizon", "meridian", "zenith", "vertical", "almucantar", "labels"],
+                  bodyName: "Горизонтальная",
+                  message: "Оставлены только горизонт, меридиан, зенит, вертикал, альмукантарат и светило." },
+    first: { visible: ["body", "equator", "world_axis", "meridian", "daily", "declination", "labels"],
+             bodyName: "Часовая t,δ",
+             message: "Оставлены только экватор, ось мира, местный меридиан, круг склонения, суточная параллель и светило." },
+    second: { visible: ["body", "equator", "world_axis", "daily", "declination", "labels"],
+              bodyName: "Экваториальная α,δ",
+              message: "Оставлены только экватор, ось мира, круг склонения, суточная параллель и светило." },
+    ecliptic: { visible: ["body", "equator", "world_axis", "ecliptic", "declination", "labels"],
+                bodyName: "Эклиптическая",
+                message: "Оставлены только экватор, ось мира, эклиптика, круг склонения и светило." },
+    base: { visible: ["body", "horizon", "equator", "world_axis", "meridian", "zenith", "labels", "cartesian"],
+            bodyName: null,
+            message: "Оставлены базовые ориентиры небесной сферы и геодезические оси." },
+    hide: { visible: [], bodyName: null,
+            message: "Все элементы отображения отключены; на сцене остается только контур сферы." }
+  };
+  var p = presets[name];
+  if (!p) return;
+  for (var i = 0; i < allKeys.length; i++) {
+    setCheck(allKeys[i], p.visible.indexOf(allKeys[i]) >= 0);
+  }
+  if (p.bodyName) {
+    els.bodySys.value = p.bodyName;
+    S.body_system = p.bodyName;          /* комбо и сцена должны оставаться согласованными */
+    updateCoordinateFields(p.bodyName);
+  }
+  onDisplay();
+  updateText();
+  S.legend_scroll = 0;
+  needsRender = true;
+  setStatus(p.message);
+}
+
+function onDisplay() {
+  S.show_horizon = checkEls.horizon.checked;
+  S.show_equator = checkEls.equator.checked;
+  S.show_world_axis = checkEls.world_axis.checked;
+  S.show_meridian = checkEls.meridian.checked;
+  S.show_zenith = checkEls.zenith.checked;
+  S.show_ecliptic = checkEls.ecliptic.checked;
+  S.show_geographic = checkEls.geographic.checked;
+  S.show_tropics = checkEls.tropics.checked;
+  S.show_polar_circles = checkEls.polar.checked;
+  S.show_daily_parallel = checkEls.daily.checked;
+  S.show_declination_circle = checkEls.declination.checked;
+  S.show_vertical_circle = checkEls.vertical.checked;
+  S.show_almucantar = checkEls.almucantar.checked;
+  S.show_body = checkEls.body.checked;
+  S.show_labels = checkEls.labels.checked;
+  S.show_cartesian_axes = checkEls.cartesian.checked;
+  needsRender = true;
+  setStatus("Отображение элементов изменено. Список видимых линий обновлен в легенде слева снизу.");
+}
+
+/* Начальный набор = base (как пресет режима «Небесная сфера» в Python) */
+(function initialPreset() {
+  var modePreset = {
+    horizon: true, equator: true, world_axis: true, meridian: true, zenith: true,
+    ecliptic: false, geographic: false, tropics: false, polar: false, daily: false,
+    declination: false, vertical: false, almucantar: false, cartesian: true
+  };
+  for (var key in modePreset) {
+    if (Object.prototype.hasOwnProperty.call(modePreset, key)) setCheck(key, modePreset[key]);
+  }
+  onDisplay();
+})();
+
+/* ── тема ─────────────────────────────────────────────── */
+els.themeSel.addEventListener("change", function () {
+  var light = els.themeSel.value === "Светлая";
+  S.theme = light ? "light" : "dark";
+  document.body.classList.toggle("light", light);
+  needsRender = true;
+  setStatus("Тема интерфейса: " + els.themeSel.value + ". Меняется фон сцены, панель и легенда.");
+});
+
+/* ── вращение и камера ────────────────────────────────── */
+els.autoChk.addEventListener("change", function () { S.auto_rotate = els.autoChk.checked; });
+els.pauseBtn.addEventListener("click", function () {
+  els.autoChk.checked = !els.autoChk.checked;
+  S.auto_rotate = els.autoChk.checked;
+});
+els.resetBtn.addEventListener("click", function () {
+  S.rot_x = -90.0; S.rot_y = 0.0; S.rot_z = 0.0;
+  velH = 0; velV = 0;
+  S.zoom_target = -12.0;
+  needsRender = true;
+});
+els.dayChk.addEventListener("change", function () { S.animate_day = els.dayChk.checked; });
+els.yearChk.addEventListener("change", function () { S.animate_year = els.yearChk.checked; });
+els.rotSel.addEventListener("change", function () {
+  S.rotation_mode = els.rotSel.value === "Вокруг оси Z" ? "Z" : "XY";
+  setStatus("Основное вращение сцены: " + els.rotSel.value + ".");
+});
+
+/* ── координаты ───────────────────────────────────────── */
+var coordEls = [els.lat, els.lon, els.h, els.az, els.dec, els.hour, els.ra, els.eclLon, els.eclLat, els.eps];
+for (var ci = 0; ci < coordEls.length; ci++) {
+  coordEls[ci].addEventListener("input", onAstroParams);
+  coordEls[ci].addEventListener("change", onAstroParams);
+}
+els.bodySys.addEventListener("change", onBodySystemChanged);
+
+/* ── статусбар: пояснения при наведении ───────────────── */
+document.addEventListener("mouseover", function (e) {
+  var el = e.target.closest ? e.target.closest("[data-help]") : null;
+  if (el) setStatus(el.getAttribute("data-help"));
+});
+
+/* ═══════════════════════════════════════════════════════════
+    МЫШЬ / TOUCH / КОЛЕСО
+   ═══════════════════════════════════════════════════════════ */
+
+var drag = false;
+var velH = 0, velV = 0;
+var lastX = 0, lastY = 0;
+var lastMoveTime = 0;
+var pointers = new Map();
+var pinchStartDist = 0, pinchStartZoom = -12;
+
+function applyRotation(dh, dv) {
+  if (S.rotation_mode === "Z") S.rot_z += dh;
+  else S.rot_y += dh;
+  S.rot_x += dv;
+}
+
+function localDelta(dx, dy) {
+  var dh = dx * 0.5;
+  var dv = dy * (S.rotation_mode === "Z" ? 0.15 : 0.5);
+  return [dh, dv];
+}
+
+canvas.addEventListener("pointerdown", function (e) {
+  e.preventDefault();
+  try { canvas.setPointerCapture(e.pointerId); } catch (err) {}
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (pointers.size === 1) {
+    drag = true;
+    velH = 0; velV = 0;
+    lastX = e.clientX; lastY = e.clientY;
+    lastMoveTime = performance.now();
+  } else if (pointers.size === 2) {
+    drag = false;
+    var pts = Array.from(pointers.values());
+    pinchStartDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    pinchStartZoom = S.zoom_target;
+  }
+});
+
+canvas.addEventListener("pointermove", function (e) {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (pointers.size >= 2) {
+    var pts = Array.from(pointers.values());
+    var d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+    if (pinchStartDist > 4) {
+      S.zoom_target = clamp(pinchStartZoom + (pinchStartDist - d) * 0.05, -35, -4);
+      needsRender = true;
+    }
+    return;
+  }
+  if (!drag) return;
+
+  var dx = e.clientX - lastX;
+  var dy = e.clientY - lastY;
+  lastX = e.clientX; lastY = e.clientY;
+  var deltas = localDelta(dx, dy);
+  applyRotation(deltas[0], deltas[1]);
+
+  var now = performance.now();
+  var dt = Math.max((now - lastMoveTime) / 1000, 0.004);
+  lastMoveTime = now;
+  var k = 0.35;
+  velH += ((deltas[0] / dt) - velH) * k;
+  velV += ((deltas[1] / dt) - velV) * k;
+  velH = clamp(velH, -900, 900);
+  velV = clamp(velV, -900, 900);
+  needsRender = true;
+});
+
+function endPointer(e) {
+  pointers.delete(e.pointerId);
+  if (pointers.size === 1) {
+    var pts = Array.from(pointers.values());
+    lastX = pts[0].x; lastY = pts[0].y;
+    drag = true;
+    pinchStartDist = 0;
+  } else if (pointers.size === 0) {
+    drag = false;
+    if (performance.now() - lastMoveTime > 60) { velH = 0; velV = 0; }
+  }
+}
+canvas.addEventListener("pointerup", endPointer);
+canvas.addEventListener("pointercancel", endPointer);
+
+canvas.addEventListener("wheel", function (e) {
+  e.preventDefault();
+  if (legendRect) {
+    var r = canvas.getBoundingClientRect();
+    var mx = e.clientX - r.left, my = e.clientY - r.top;
+    if (mx >= legendRect.x && mx <= legendRect.x + legendRect.w &&
+        my >= legendRect.y && my <= legendRect.y + legendRect.h) {
+      var total = legendItems().length;
+      var visible = Math.min(9, total);
+      var maxScroll = Math.max(0, total - visible);
+      var dir = e.deltaY > 0 ? 1 : -1;
+      S.legend_scroll = Math.round(clamp(S.legend_scroll + dir, 0, maxScroll));
+      needsRender = true;
+      return;
+    }
+  }
+  var dy = e.deltaY;
+  var mag = Math.min(Math.abs(dy), 120);
+  var sign = dy > 0 ? 1 : -1;
+  S.zoom_target = clamp(S.zoom_target - sign * mag * 0.01, -35, -4);
+  needsRender = true;
+}, { passive: false });
+
+/* ═══════════════════════════════════════════════════════════
+    СПРАВКА
+   ═══════════════════════════════════════════════════════════ */
+
+var modal = document.getElementById("modal");
+var modalTitle = document.getElementById("modalTitle");
+var modalText = document.getElementById("modalText");
+document.getElementById("modalClose").addEventListener("click", function () {
+  modal.classList.remove("open");
+});
+modal.addEventListener("click", function (e) {
+  if (e.target === modal) modal.classList.remove("open");
+});
+
+var GLOSSARY = [
+  "СЛОВАРЬ ВЕЛИЧИН УЧЕБНОЙ 3D-МОДЕЛИ",
+  "===========================================================",
+  "",
+  "НЕБЕСНАЯ СФЕРА",
+  "Вспомогательная сфера произвольного радиуса с центром в точке наблюдения. Все направления на светила проецируются на неё; важны только углы, а не расстояния.",
+  "",
+  "ОСЬ МИРА PP′",
+  "Прямая, параллельная оси вращения Земли. P — северный полюс мира, P′ — южный полюс мира. Высота полюса мира над горизонтом равна широте наблюдателя: h(P) = φ.",
+  "",
+  "НЕБЕСНЫЙ ЭКВАТОР",
+  "Большой круг, плоскость которого перпендикулярна оси мира. Делит сферу на северное и южное полушария.",
+  "",
+  "МАТЕМАТИЧЕСКИЙ ГОРИЗОНТ SWNE",
+  "Большой круг, плоскость которого перпендикулярна отвесной линии. Точки: N — север, S — юг, E — восток, W — запад.",
+  "",
+  "ОТВЕСНАЯ ЛИНИЯ ZZ′",
+  "Направление силы тяжести в точке наблюдения. Z — зенит (над головой), Z′ — надир (под ногами).",
+  "",
+  "НЕБЕСНЫЙ МЕРИДИАН PZP′Z′",
+  "Большой круг через полюсы мира, зенит и надир. По нему проходят верхняя и нижняя кульминации светил.",
+  "",
+  "ГЕОДЕЗИЧЕСКИЕ ОСИ",
+  "X — на экваторе к Гринвичскому меридиану (0°), Y — на экваторе к долготе 90°E, Z — к северному полюсу Pn.",
+  "",
+  "ЭКЛИПТИКА",
+  "Большой круг видимого годового движения Солнца. Наклонена к экватору на угол ε ≈ 23,43°.",
+  "",
+  "ОСЬ ЭКЛИПТИКИ RR′",
+  "Перпендикуляр к плоскости эклиптики. R — северный полюс эклиптики, R′ — южный.",
+  "",
+  "ТОЧКИ ЭКЛИПТИКИ",
+  "γ (гамма) — весеннее равноденствие (λe = 0°), Ω — осеннее (λe = 180°), Solst N / Solst S — летнее и зимнее солнцестояния (λe = 90° / 270°).",
+  "",
+  "ГОРИЗОНТАЛЬНАЯ СИСТЕМА",
+  "A — астрономический азимут от точки юга к западу; A′ = A + 180° — геодезический азимут; h — высота над горизонтом; z = 90° − h — зенитное расстояние.",
+  "",
+  "ВЕРТИКАЛ СВЕТИЛА",
+  "Большой полукруг через Z, M и Z′. По нему отсчитываются высота h и зенитное расстояние z.",
+  "",
+  "АЛЬМУКАНТАРАТ",
+  "Малый круг постоянной высоты h (в программе — оранжевый, проходит через светило M).",
+  "",
+  "ЭКВАТОРИАЛЬНАЯ СИСТЕМА",
+  "δ — склонение от небесного экватора (−90°…+90°); p = 90° − δ — полярное расстояние; t — часовой угол от верхней точки экватора (1h = 15°); α — прямое восхождение от точки γ. В модели звёздное время s = L, поэтому t = L − α.",
+  "",
+  "КРУГ СКЛОНЕНИЯ",
+  "Большой полукруг через P, M и P′.",
+  "",
+  "СУТОЧНАЯ ПАРАЛЛЕЛЬ",
+  "Малый круг постоянного склонения δ — видимый суточный путь светила (в программе — красный, проходит через M). Пересечение с горизонтом даёт восход и заход: |δ| < 90° − |φ|.",
+  "",
+  "ЭКЛИПТИЧЕСКИЕ КООРДИНАТЫ",
+  "λe — долгота вдоль эклиптики от точки γ; β — широта от плоскости эклиптики; ε — наклон эклиптики. Для Солнца: sin δ = sin ε · sin λe.",
+  "",
+  "ГЕОГРАФИЧЕСКИЕ ЭЛЕМЕНТЫ",
+  "B / φ — широта наблюдателя; L / λ — долгота; меридианы и параллели наблюдателя; тропики ±ε; полярные круги ±(90° − ε).",
+  "",
+  "СВЕТИЛО M",
+  "Большая красная точка с белой окантовкой — исследуемое светило. Все круги светила (суточная параллель, круг склонения, вертикал, альмукантарат) проходят через неё.",
+  "",
+  "КУЛЬМИНАЦИЯ / ВОСХОД",
+  "Кульминация — прохождение небесного меридиана (верхняя — максимальная высота). Восход и заход — пересечение суточной параллели с горизонтом."
+].join("\n");
+
+var HELP = [
+  "УЧЕБНАЯ 3D-МОДЕЛЬ НЕБЕСНОЙ СФЕРЫ И ГЕОДЕЗИЧЕСКОЙ АСТРОНОМИИ",
+  "===========================================================",
+  "",
+  "1. НАЗНАЧЕНИЕ ПРОГРАММЫ",
+  "Программа предназначена для изучения геодезической астрономии. Главная задача — показать не звездное небо как в планетариях, а геометрию координатных систем: горизонт, экватор, ось мира, меридиан, эклиптику, суточные параллели и положение светила.",
+  "",
+  "2. РАБОЧАЯ ОБЛАСТЬ",
+  "В центре находится 3D-сцена. Левой кнопкой мыши (или пальцем) можно вращать сцену, колесиком — менять масштаб, двумя пальцами — масштаб на телефоне. Ось Z в начальном виде направлена вверх и соответствует направлению на северный полюс Pn.",
+  "",
+  "3. ГЕОДЕЗИЧЕСКАЯ ОРИЕНТАЦИЯ ОСЕЙ",
+  "X — направление на экваторе к начальному, или Гринвичскому, меридиану.",
+  "Y — направление на экваторе к долготе 90°E.",
+  "Z — направление оси вращения Земли к северному полюсу Pn.",
+  "Это соответствует земной геоцентрической системе координат.",
+  "",
+  "4. ПРАВАЯ ПАНЕЛЬ",
+  "Правая панель состоит из раскрывающихся блоков. Каждый блок можно свернуть, чтобы не прокручивать длинный список настроек.",
+  "",
+  "5. ТЕМА ИНТЕРФЕЙСА",
+  "Темная тема удобна для доклада и проекторов. Светлая тема удобна для печати, демонстрации на ярком экране и вставки скриншотов в отчет. В светлой теме контуры сферы специально усилены темно-синим цветом.",
+  "",
+  "6. НЕБЕСНАЯ СФЕРА",
+  "Небесная сфера — условная сфера направлений. Ее радиус не важен: важны только углы и направления. На сфере отображаются большие и малые круги, используемые в геодезической астрономии.",
+  "",
+  "7. ОСНОВНЫЕ ЭЛЕМЕНТЫ СФЕРЫ",
+  "• Ось мира PP' — направление оси вращения Земли.",
+  "• Небесный экватор — большой круг, перпендикулярный оси мира.",
+  "• Математический горизонт SWNE — плоскость, перпендикулярная отвесной линии.",
+  "• Зенит Z и надир Z' — точки над и под наблюдателем.",
+  "• Небесный меридиан — большой круг через полюсы мира и зенит.",
+  "• Эклиптика — наклоненный большой круг годового движения Солнца.",
+  "• Суточная параллель — малый круг постоянного склонения δ.",
+  "• Альмукантарат — малый круг постоянной высоты h.",
+  "Часть линий на дальней стороне сферы автоматически становится пунктирной и прозрачной. При вращении классификация пересчитывается по текущему углу камеры.",
+  "",
+  "8. КООРДИНАТЫ НАБЛЮДАТЕЛЯ",
+  "B / φ — широта наблюдателя. Она определяет высоту полюса мира над горизонтом.",
+  "L / λ — долгота наблюдателя. Она задает положение локального меридиана.",
+  "При изменении широты меняется наклон горизонта относительно небесного экватора.",
+  "",
+  "9. ГОРИЗОНТАЛЬНАЯ СИСТЕМА",
+  "A — астрономический азимут: от точки юга к западу (как в учебнике); геодезический азимут A' = A + 180°.",
+  "h — высота светила над горизонтом.",
+  "z — зенитное расстояние.",
+  "Формула: z + h = 90°.",
+  "Если h > 0, светило находится над горизонтом. Если h < 0 — под горизонтом.",
+  "",
+  "10. ЭКВАТОРИАЛЬНАЯ СИСТЕМА",
+  "δ — склонение светила относительно небесного экватора.",
+  "p — полярное расстояние: p + δ = 90°.",
+  "t — часовой угол, изменяемый суточным вращением.",
+  "α — прямое восхождение. Связь часовой и угловой меры: 1h = 15°.",
+  "В учебной модели местное звёздное время принято равным долготе наблюдателя L, поэтому t = L − α; t = 0 — светило в верхней кульминации на меридиане наблюдателя.",
+  "",
+  "10.1. СИСТЕМА СВЕТИЛА M",
+  "Поле «Система светила» задает, какие координаты реально перемещают точку M:",
+  "• Экваториальная α,δ — используются прямое восхождение α и склонение δ.",
+  "• Часовая t,δ — используются часовой угол t и склонение δ.",
+  "• Горизонтальная — используются азимут A и высота h.",
+  "• Эклиптическая — используются λe, β и ε.",
+  "",
+  "11. СВЯЗЬ СИСТЕМ",
+  "Высота светила вычисляется по формуле:",
+  "sin h = sin φ sin δ + cos φ cos δ cos t.",
+  "Эта формула связывает широту наблюдателя, склонение, часовой угол и положение светила относительно горизонта.",
+  "",
+  "12. ВОСХОД, ЗАХОД И КУЛЬМИНАЦИЯ",
+  "Светило восходит и заходит, если его суточная параллель пересекает горизонт.",
+  "Условие: |δ| < 90° - |φ|.",
+  "Если условие не выполняется, светило может быть незаходящим или невосходящим.",
+  "Верхняя кульминация соответствует максимальной высоте на меридиане.",
+  "",
+  "13. ЭКЛИПТИКА",
+  "ε — наклон эклиптики к небесному экватору, примерно 23.43°.",
+  "λe — эклиптическая долгота, β — эклиптическая широта.",
+  "Для Солнца на эклиптике используется приближенное соотношение:",
+  "sin δ = sin ε sin λe.",
+  "Оно объясняет годовое изменение склонения Солнца и смену сезонов.",
+  "",
+  "14. ЛЕГЕНДА",
+  "Легенда находится в левом нижнем углу. Она динамическая: в ней показываются только те объекты, которые включены на сцене. Если элементов много, наведите курсор на легенду и прокрутите колесиком мыши.",
+  "",
+  "15. НИЖНЯЯ СТРОКА СПРАВКИ",
+  "В нижней строке отображается краткое пояснение к элементу, на который наведен курсор или который был изменен. Это аналог профессиональной строки состояния в инженерных и геодезических программах.",
+  "",
+  "16. ЧТО ДЕЛАТЬ НА ДЕМОНСТРАЦИИ",
+  "1) Показать сферу, горизонт и зенит.",
+  "2) Изменить широту B/φ и показать изменение положения полюса мира.",
+  "3) Изменить A и h и объяснить горизонтальную систему.",
+  "4) Изменить δ и t и показать суточную параллель.",
+  "5) Включить эклиптику и объяснить наклон ε и годовое движение.",
+  "",
+  "17. ОГРАНИЧЕНИЯ",
+  "Модель учебная. Она не использует реальные эфемериды, прецессию, нутацию, рефракцию и каталоги звезд. Ее цель — геометрическое понимание систем координат."
+].join("\n");
+
+document.getElementById("glossaryBtn").addEventListener("click", function () {
+  modalTitle.textContent = "Определения величин — небесная сфера и системы координат";
+  modalText.textContent = GLOSSARY;
+  modal.classList.add("open");
+});
+document.getElementById("helpBtn").addEventListener("click", function () {
+  modalTitle.textContent = "Профессиональная справка по программе";
+  modalText.textContent = HELP;
+  modal.classList.add("open");
+});
+
+/* ═══════════════════════════════════════════════════════════
+    РАЗДЕЛИТЕЛЬ ПАНЕЛИ + ЗАПУСК
+   ═══════════════════════════════════════════════════════════ */
+
+(function dividerDrag() {
+  var divider = document.getElementById("divider");
+  var wrap = document.getElementById("panelWrap");
+  var dragging = false;
+  divider.addEventListener("pointerdown", function (e) {
+    dragging = true;
+    divider.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+  divider.addEventListener("pointermove", function (e) {
+    if (!dragging) return;
+    var w = clamp(window.innerWidth - e.clientX, 320, 620);
+    wrap.style.flex = "0 0 " + w + "px";
+    wrap.style.width = w + "px";
+    resizeCanvas();
+  });
+  divider.addEventListener("pointerup", function (e) {
+    dragging = false;
+    try { divider.releasePointerCapture(e.pointerId); } catch (err) {}
+  });
+})();
+
+var lastTick = performance.now();
+function loop(now) {
+  var dt = Math.min((now - lastTick) / 1000, 0.1);
+  lastTick = now;
+  var changed = false;
+
+  if (!drag) {
+    if (S.auto_rotate) {
+      applyRotation(AUTO_ROTATE_SPEED * dt, 0.0);
+      changed = true;
+    }
+    if (Math.abs(velH) > 0.5 || Math.abs(velV) > 0.5) {
+      applyRotation(velH * dt, velV * dt);
+      var decay = Math.exp(-INERTIA_FRICTION * dt);
+      velH *= decay;
+      velV *= decay;
+      changed = true;
+    } else {
+      velH = 0; velV = 0;
+    }
+  }
+
+  var diff = S.zoom_target - S.zoom;
+  if (Math.abs(diff) > 0.002) {
+    S.zoom += diff * (1.0 - Math.exp(-ZOOM_RESPONSE * dt));
+    changed = true;
+  } else if (diff !== 0) {
+    S.zoom = S.zoom_target;
+    changed = true;
+  }
+
+  if (S.animate_day) {
+    S.hour = (S.hour + DAY_SPEED * dt) % 360.0;
+    changed = true;
+  }
+  if (S.animate_year) {
+    S.ecl_lon = (S.ecl_lon + YEAR_SPEED * dt) % 360.0;
+    S.dec = radToDeg(Math.asin(Math.sin(degToRad(S.eps)) * Math.sin(degToRad(S.ecl_lon))));
+    changed = true;
+  }
+
+  if (changed || needsRender) {
+    needsRender = false;
+    render();
+  }
+  requestAnimationFrame(loop);
+}
+
+if (window.ResizeObserver) {
+  new ResizeObserver(function () { resizeCanvas(); }).observe(document.getElementById("stage"));
+}
+window.addEventListener("resize", resizeCanvas);
+
+resizeCanvas();
+updateCoordinateFields(els.bodySys.value);
+updateText();
+setStatus("Готово. Наведите курсор на любой элемент управления — здесь появится пояснение.");
+requestAnimationFrame(loop);
+
+/* Отладочный доступ (не влияет на работу): window.ASTRO.check() */
+window.ASTRO = {
+  bodyCoordinates: bodyCoordinates,
+  selfcheckCoordinates: selfcheckCoordinates,
+  altitudeFromEquatorial: altitudeFromEquatorial,
+  visibilityStatus: visibilityStatus,
+  equatorialToCartesian: equatorialToCartesian,
+  horizontalToCartesian: horizontalToCartesian,
+  raDecToCartesian: raDecToCartesian,
+  eclipticToCartesian: eclipticToCartesian,
+  f2: f2, wrap360: wrap360, angleDiff: angleDiff,
+  state: S,
+  /* принудительная перерисовка кадра — используется только для записи демо-роликов */
+  requestRender: function () { needsRender = true; },
+  /* скрыть легенду в записи демо-ролика (на работу приложения не влияет) */
+  hideLegend: function () { legendItems = function () { return []; }; }
+};
+
+})();
+</script>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4e941447a4a14d3',t:'MTc5MjY4MDAwMw=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
