@@ -16,7 +16,7 @@
     --btn-hover-border:#5588ff; --code-bg:#080820; --code-color:#cccccc;
     --status-bg:#081024; --status-color:#a6b9dc; --status-border:#22315c;
     --mode-desc:#a6b9dc; --title-color:#88bbff; --title-bg:#090925; --title-border:#222255;
-    --divider:#1b1b45; --badge-bg:rgba(20,22,58,.82); --badge-color:#cfe0ff; --badge-border:#2f3d78;
+    --divider:#1b1b45;
     --legend-hint:#aabee1;
   }
   body.light {
@@ -27,7 +27,7 @@
     --btn-hover-border:#557fd4; --code-bg:#ffffff; --code-color:#172033;
     --status-bg:#eef3fb; --status-color:#34405a; --status-border:#c6d2e8;
     --mode-desc:#34405a; --title-color:#1f4fa3; --title-bg:#ffffff; --title-border:#c6d2e8;
-    --divider:#c9d6ea; --badge-bg:rgba(255,255,255,.86); --badge-color:#1f4fa3; --badge-border:#b9cbe8;
+    --divider:#c9d6ea;
     --legend-hint:#4b5c78;
   }
 
@@ -37,16 +37,6 @@
   #stage { position:relative; flex:1 1 auto; min-width:0; min-height:0; background:var(--bg); }
   #scene { display:block; width:100%; height:100%; touch-action:none; cursor:grab; }
   #scene:active { cursor:grabbing; }
-
-  #badge {
-    position:absolute; top:10px; left:50%; transform:translateX(-50%);
-    max-width:calc(100% - 24px); box-sizing:border-box;
-    padding:6px 14px; border-radius:999px; border:1px solid var(--badge-border);
-    background:var(--badge-bg); color:var(--badge-color);
-    font-size:11.5px; font-weight:700; text-align:center; letter-spacing:.2px;
-    pointer-events:none; user-select:none; white-space:nowrap; overflow:hidden;
-    text-overflow:ellipsis; backdrop-filter:blur(3px);
-  }
 
   #divider { flex:0 0 5px; width:5px; background:var(--divider); cursor:col-resize; }
 
@@ -138,7 +128,6 @@
     #stage { flex:0 0 auto; height:52dvh; }
     #panelWrap { flex:1 1 auto; width:auto; min-width:0; max-width:none;
       border-top:1px solid var(--group-border); }
-    #badge { font-size:10px; padding:5px 10px; white-space:normal; }
     input[type=number] { width:92px; }
 
     /* ── ручка-«шторка»: сворачивает нижнее меню целиком ── */
@@ -167,7 +156,6 @@
 <div id="app">
   <div id="stage">
     <canvas id="scene"></canvas>
-    <div id="badge">МАКЕТ для QR: та же математика и оформление, что в Python-программе v3.2.</div>
   </div>
   <div id="divider"></div>
   <div id="panelWrap">
@@ -2031,5 +2019,5 @@ window.ASTRO = {
 
 })();
 </script>
-<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4e98014dd490e44',t:'MTc5MjY4MjU3Ng=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a4e98b89ae2925b4',t:'MTc5MjY4MzA0NQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
